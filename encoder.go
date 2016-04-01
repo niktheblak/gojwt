@@ -4,70 +4,65 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"strings"
 )
 
 var encoding = base64.RawURLEncoding
 
-func (token JSONWebToken) Encode(secret []byte) ([]byte, error) {
-	err := token.Validate()
-	if err != nil {
-		return nil, err
-	}
-	buf := new(bytes.Buffer)
-	encoder := base64.NewEncoder(encoding, buf)
+func (token JSONWebToken) Encode(secret []byte) (string, error) {
+	var buf bytes.Buffer
+	encoder := base64.NewEncoder(encoding, &buf)
 	header, err := json.Marshal(token.header)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	encoder.Write(header)
 	buf.WriteByte('.')
 	claims, err := json.Marshal(token.Claims)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	encoder.Write(claims)
-	signature := Sign(secret, buf.Bytes())
+	signature := Sign(secret, buf.String())
 	buf.WriteByte('.')
 	encoder.Write(signature)
 	encoder.Close()
-	data := make([]byte, len(buf.Bytes()))
-	copy(data, buf.Bytes())
-	return data, nil
+	return buf.String(), nil
 }
 
-func Decode(secret, data []byte) (token JSONWebToken, err error) {
-	claimsPos := bytes.IndexByte(data, '.')
+func Decode(secret []byte, tokenStr string) (token JSONWebToken, err error) {
+	claimsPos := strings.IndexByte(tokenStr, '.')
 	if claimsPos == -1 {
 		err = ErrMalformedToken
 		return
 	}
-	signaturePos := bytes.LastIndexByte(data, '.')
+	signaturePos := strings.LastIndexByte(tokenStr, '.')
 	if signaturePos == claimsPos {
 		err = ErrMalformedToken
 		return
 	}
-	payloadBytes := data[:signaturePos]
-	headerBytes := data[:claimsPos]
-	claimsBytes := data[claimsPos+1 : signaturePos]
-	signatureBytes := data[signaturePos+1:]
+	payloadStr := tokenStr[:signaturePos]
+	headerStr := tokenStr[:claimsPos]
+	claimsStr := tokenStr[claimsPos+1 : signaturePos]
+	signatureStr := tokenStr[signaturePos+1:]
 	// Verify signature
-	rawSignature, err := decodeBase64(signatureBytes)
+	rawSignature, err := encoding.DecodeString(signatureStr)
 	if err != nil {
 		return
 	}
-	err = Verify(secret, payloadBytes, rawSignature)
+	err = Verify(secret, payloadStr, rawSignature)
 	if err != nil {
 		return
 	}
 	// Decode header
 	token.header = make(map[string]string)
-	err = decodeBase64JSON(headerBytes, &token.header)
+	err = decodeBase64JSON(headerStr, &token.header)
 	if err != nil {
 		return
 	}
 	// Decode claims
 	token.Claims = make(map[string]interface{})
-	err = decodeBase64JSON(claimsBytes, &token.Claims)
+	err = decodeBase64JSON(claimsStr, &token.Claims)
 	if err != nil {
 		return
 	}
@@ -75,37 +70,23 @@ func Decode(secret, data []byte) (token JSONWebToken, err error) {
 	return
 }
 
-func VerifySignature(secret, data []byte) error {
-	signaturePos := bytes.LastIndexByte(data, '.')
+func VerifySignature(secret []byte, tokenStr string) error {
+	signaturePos := strings.LastIndexByte(tokenStr, '.')
 	if signaturePos == -1 {
 		return ErrMalformedToken
 	}
-	payloadBytes := data[:signaturePos]
-	signatureBytes := data[signaturePos+1:]
-	decoded := make([]byte, len(signatureBytes))
-	n, err := encoding.Decode(decoded, signatureBytes)
+	payloadBytes := tokenStr[:signaturePos]
+	signatureBytes := tokenStr[signaturePos+1:]
+	signature, err := encoding.DecodeString(signatureBytes)
 	if err != nil {
 		return err
 	}
-	signature := decoded[:n]
 	return Verify(secret, payloadBytes, signature)
 }
 
-func decodeBase64(data []byte) ([]byte, error) {
-	decoded := make([]byte, len(data))
-	n, err := encoding.Decode(decoded, data)
-	if err != nil {
-		return decoded, err
-	}
-	decoded = decoded[:n]
-	return decoded, nil
-}
-
-func decodeBase64JSON(data []byte, v interface{}) error {
-	buf := bytes.NewBuffer(data)
-	base64Decoder := base64.NewDecoder(encoding, buf)
-	jsonDecoder := json.NewDecoder(base64Decoder)
-	err := jsonDecoder.Decode(v)
+func decodeBase64JSON(data string, v interface{}) error {
+	decoded, err := encoding.DecodeString(data)
+	err = json.Unmarshal(decoded, v)
 	if err != nil {
 		return err
 	}

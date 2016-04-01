@@ -25,7 +25,7 @@ func TestEncode(t *testing.T) {
 }
 
 func TestDecode(t *testing.T) {
-	token, err := Decode(testSecret, []byte(testToken))
+	token, err := Decode(testSecret, testToken)
 	assert.NoError(t, err)
 	assert.Equal(t, testClaims, token.Claims)
 }

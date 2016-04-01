@@ -8,10 +8,10 @@ func NewContext(secret []byte) *Context {
 	return &Context{secret}
 }
 
-func (ctx *Context) Encode(token JSONWebToken) ([]byte, error) {
+func (ctx *Context) Encode(token JSONWebToken) (string, error) {
 	return token.Encode(ctx.secret)
 }
 
-func (ctx *Context) Decode(data []byte) (JSONWebToken, error) {
-	return Decode(ctx.secret, data)
+func (ctx *Context) Decode(tokenStr string) (JSONWebToken, error) {
+	return Decode(ctx.secret, tokenStr)
 }
