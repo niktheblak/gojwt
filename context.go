@@ -1,17 +1,23 @@
 package jwt
 
-type Context struct {
+import "github.com/niktheblak/jwt/encoder"
+
+type JWTContext struct {
 	secret []byte
 }
 
-func NewContext(secret []byte) *Context {
-	return &Context{secret}
+func NewContext(secret []byte) *JWTContext {
+	return &JWTContext{secret}
 }
 
-func (ctx *Context) Encode(token JSONWebToken) (string, error) {
-	return token.Encode(ctx.secret)
+func (ctx *JWTContext) Encode(token JSONWebToken) (string, error) {
+	return encoder.Encode(ctx.secret, token.header, token.Claims)
 }
 
-func (ctx *Context) Decode(tokenStr string) (JSONWebToken, error) {
-	return Decode(ctx.secret, tokenStr)
+func (ctx *JWTContext) Decode(tokenStr string) (JSONWebToken, error) {
+	header, claims, err := encoder.Decode(ctx.secret, tokenStr)
+	return JSONWebToken{
+		header: header,
+		Claims: claims,
+	}, err
 }

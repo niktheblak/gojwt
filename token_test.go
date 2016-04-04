@@ -7,9 +7,10 @@ import (
 )
 
 func TestCustomHeader(t *testing.T) {
+	ctx := NewContext(testSecret)
 	token := New()
 	token.SetHeader("vendor", "ntb")
 	token.Claims = testClaims
-	_, err := token.Encode(testSecret)
+	_, err := ctx.Encode(token)
 	assert.NoError(t, err)
 }

@@ -1,24 +1,28 @@
 package jwt
 
-import "time"
+import (
+	"time"
+
+	"github.com/niktheblak/jwt/errors"
+)
 
 func (token JSONWebToken) Validate() error {
 	alg, ok := token.header["alg"]
 	if !ok {
-		return ErrInvalidHeader
+		return errors.ErrInvalidHeader
 	}
 	if alg != "HS256" {
-		return ErrInvalidAlgorithm
+		return errors.ErrInvalidAlgorithm
 	}
 	typ, ok := token.header["typ"]
 	if !ok {
-		return ErrInvalidHeader
+		return errors.ErrInvalidHeader
 	}
 	if typ != "JWT" {
-		return ErrInvalidType
+		return errors.ErrInvalidType
 	}
 	if token.Expired() {
-		return ErrExpiredToken
+		return errors.ErrExpiredToken
 	}
 	return nil
 }

@@ -1,8 +1,14 @@
-package jwt
+package signature
 
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"errors"
+	"hash"
+)
+
+var (
+	ErrInvalidSignature = errors.New("Invalid signature")
 )
 
 type Signer struct {
@@ -18,15 +24,23 @@ func (s Signer) Verify(data string, signature []byte) error {
 }
 
 func Sign(secret []byte, data string) []byte {
-	mac := hmac.New(sha256.New, secret)
+	mac := NewMac(secret)
 	mac.Write([]byte(data))
 	signature := mac.Sum(nil)
 	return signature
 }
 
 func Verify(secret []byte, data string, signature []byte) error {
-	mac := hmac.New(sha256.New, secret)
+	mac := NewMac(secret)
 	mac.Write([]byte(data))
+	return VerifyMAC(mac, signature)
+}
+
+func NewMac(secret []byte) hash.Hash {
+	return hmac.New(sha256.New, secret)
+}
+
+func VerifyMAC(mac hash.Hash, signature []byte) error {
 	expectedSignature := mac.Sum(nil)
 	if !hmac.Equal(signature, expectedSignature) {
 		return ErrInvalidSignature
