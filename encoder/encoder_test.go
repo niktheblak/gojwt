@@ -37,6 +37,18 @@ func TestDecode(t *testing.T) {
 	assert.Equal(t, testClaims, token.Claims)
 }
 
+func TestRoundTrip(t *testing.T) {
+	token := Token{
+		Header: testHeader,
+		Claims: testClaims,
+	}
+	encoded, err := Encode(testSecret, token)
+	assert.NoError(t, err)
+	decoded, err := Decode(testSecret, encoded)
+	assert.NoError(t, err)
+	assert.Equal(t, token, decoded)
+}
+
 func TestSignature(t *testing.T) {
 	token := Token{
 		Header: testHeader,
