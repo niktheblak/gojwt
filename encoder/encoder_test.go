@@ -3,10 +3,13 @@ package encoder
 import (
 	"testing"
 
+	"github.com/niktheblak/jwt/sign/hs256"
 	"github.com/stretchr/testify/assert"
 )
 
 var testSecret = []byte("secret")
+
+var testSigner = hs256.New(testSecret)
 
 var testHeader = map[string]interface{}{
 	"alg": "HS256",
@@ -26,13 +29,13 @@ func TestEncode(t *testing.T) {
 		Header: testHeader,
 		Claims: testClaims,
 	}
-	encoded, err := Encode(testSecret, token)
+	encoded, err := Encode(testSigner, token)
 	assert.NoError(t, err)
 	assert.Equal(t, testToken, encoded)
 }
 
 func TestDecode(t *testing.T) {
-	token, err := Decode(testSecret, testToken)
+	token, err := Decode(testSigner, testToken)
 	assert.NoError(t, err)
 	assert.Equal(t, testClaims, token.Claims)
 }
@@ -42,9 +45,9 @@ func TestRoundTrip(t *testing.T) {
 		Header: testHeader,
 		Claims: testClaims,
 	}
-	encoded, err := Encode(testSecret, token)
+	encoded, err := Encode(testSigner, token)
 	assert.NoError(t, err)
-	decoded, err := Decode(testSecret, encoded)
+	decoded, err := Decode(testSigner, encoded)
 	assert.NoError(t, err)
 	assert.Equal(t, token, decoded)
 }
@@ -54,8 +57,8 @@ func TestSignature(t *testing.T) {
 		Header: testHeader,
 		Claims: testClaims,
 	}
-	encoded, err := Encode(testSecret, token)
+	encoded, err := Encode(testSigner, token)
 	assert.NoError(t, err)
-	err = VerifySignature(testSecret, encoded)
+	err = VerifySignature(testSigner, encoded)
 	assert.NoError(t, err)
 }

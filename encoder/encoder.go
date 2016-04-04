@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/niktheblak/jwt/errors"
-	sig "github.com/niktheblak/jwt/signature"
+	"github.com/niktheblak/jwt/sign"
 )
 
 type Token struct {
@@ -17,7 +17,7 @@ type Token struct {
 
 var DefaultEncoding = base64.RawURLEncoding
 
-func Encode(secret []byte, token Token) (string, error) {
+func Encode(sig sign.Signer, token Token) (string, error) {
 	var buf bytes.Buffer
 	encoder := base64.NewEncoder(DefaultEncoding, &buf)
 	headerJSON, err := json.Marshal(token.Header)
@@ -31,16 +31,14 @@ func Encode(secret []byte, token Token) (string, error) {
 		return "", err
 	}
 	encoder.Write(claimsJSON)
-	signature := sig.Sign(secret, buf.String())
+	signature := sig.Sign(buf.String())
 	buf.WriteByte('.')
 	encoder.Write(signature)
 	encoder.Close()
 	return buf.String(), nil
 }
 
-func Decode(secret []byte, tokenStr string) (token Token, err error) {
-	token.Header = make(map[string]interface{})
-	token.Claims = make(map[string]interface{})
+func Decode(sig sign.Signer, tokenStr string) (token Token, err error) {
 	claimsPos := strings.IndexByte(tokenStr, '.')
 	if claimsPos == -1 {
 		err = errors.ErrMalformedToken
@@ -60,21 +58,23 @@ func Decode(secret []byte, tokenStr string) (token Token, err error) {
 	if err != nil {
 		return
 	}
-	err = sig.Verify(secret, encodedPayload, signature)
+	err = sig.Verify(encodedPayload, signature)
 	if err != nil {
 		return
 	}
 	// Decode header
+	token.Header = make(map[string]interface{})
 	err = decodeBase64JSON(encodedHeader, &token.Header)
 	if err != nil {
 		return
 	}
 	// Decode claims
+	token.Claims = make(map[string]interface{})
 	err = decodeBase64JSON(encodedClaims, &token.Claims)
 	return
 }
 
-func VerifySignature(secret []byte, tokenStr string) error {
+func VerifySignature(sig sign.Signer, tokenStr string) error {
 	signaturePos := strings.LastIndexByte(tokenStr, '.')
 	if signaturePos == -1 {
 		return errors.ErrMalformedToken
@@ -85,7 +85,7 @@ func VerifySignature(secret []byte, tokenStr string) error {
 	if err != nil {
 		return err
 	}
-	return sig.Verify(secret, encodedPayload, signature)
+	return sig.Verify(encodedPayload, signature)
 }
 
 func decodeBase64JSON(data string, v interface{}) error {

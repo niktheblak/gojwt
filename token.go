@@ -3,68 +3,31 @@ package jwt
 import (
 	"time"
 
-	"github.com/niktheblak/jwt/errors"
+	"github.com/niktheblak/jwt/sign"
 )
 
-var DefaultHeader = map[string]interface{}{
-	"alg": "HS256",
-	"typ": "JWT",
-}
-
 type JSONWebToken struct {
-	header map[string]interface{}
 	Claims map[string]interface{}
+	Header map[string]interface{}
 }
 
 func New() JSONWebToken {
 	return JSONWebToken{
-		header: DefaultHeader,
 		Claims: make(map[string]interface{}),
+		Header: nil,
 	}
 }
 
-func (t JSONWebToken) Algorithm() string {
-	return t.Header("alg").(string)
+func (token JSONWebToken) Algorithm() sign.Algorithm {
+	name, ok := token.Header["alg"]
+	if ok {
+		return sign.AlgorithmsByName[name.(string)]
+	}
+	return sign.AlgoUnknown
 }
 
-func (t JSONWebToken) Type() string {
-	return t.Header("typ").(string)
-}
-
-func (t JSONWebToken) Headers() []string {
-	var keys []string
-	for k := range t.header {
-		keys = append(keys, k)
-	}
-	return keys
-}
-
-func (t JSONWebToken) Header(key string) interface{} {
-	return t.header[key]
-}
-
-func (t JSONWebToken) SetHeader(key, value string) {
-	if &t.header == &DefaultHeader {
-		hdr := make(map[string]interface{})
-		for k, v := range t.header {
-			hdr[k] = v
-		}
-		t.header = hdr
-	}
-	t.header[key] = value
-}
-
-func (token JSONWebToken) Validate() error {
-	if token.Algorithm() != "HS256" {
-		return errors.ErrInvalidAlgorithm
-	}
-	if token.Type() != "JWT" {
-		return errors.ErrInvalidType
-	}
-	if token.Expired() {
-		return errors.ErrExpiredToken
-	}
-	return nil
+func (token JSONWebToken) Type() string {
+	return token.Header["typ"].(string)
 }
 
 func (token JSONWebToken) Expired() bool {
