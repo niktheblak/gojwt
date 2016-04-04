@@ -10,18 +10,23 @@ import (
 	sig "github.com/niktheblak/jwt/signature"
 )
 
+type Token struct {
+	Header map[string]interface{}
+	Claims map[string]interface{}
+}
+
 var DefaultEncoding = base64.RawURLEncoding
 
-func Encode(secret []byte, header map[string]string, claims map[string]interface{}) (string, error) {
+func Encode(secret []byte, token Token) (string, error) {
 	var buf bytes.Buffer
 	encoder := base64.NewEncoder(DefaultEncoding, &buf)
-	headerJSON, err := json.Marshal(header)
+	headerJSON, err := json.Marshal(token.Header)
 	if err != nil {
 		return "", err
 	}
 	encoder.Write(headerJSON)
 	buf.WriteByte('.')
-	claimsJSON, err := json.Marshal(claims)
+	claimsJSON, err := json.Marshal(token.Claims)
 	if err != nil {
 		return "", err
 	}
@@ -33,9 +38,9 @@ func Encode(secret []byte, header map[string]string, claims map[string]interface
 	return buf.String(), nil
 }
 
-func Decode(secret []byte, tokenStr string) (header map[string]string, claims map[string]interface{}, err error) {
-	header = make(map[string]string)
-	claims = make(map[string]interface{})
+func Decode(secret []byte, tokenStr string) (token Token, err error) {
+	token.Header = make(map[string]interface{})
+	token.Claims = make(map[string]interface{})
 	claimsPos := strings.IndexByte(tokenStr, '.')
 	if claimsPos == -1 {
 		err = errors.ErrMalformedToken
@@ -46,30 +51,26 @@ func Decode(secret []byte, tokenStr string) (header map[string]string, claims ma
 		err = errors.ErrMalformedToken
 		return
 	}
-	payloadStr := tokenStr[:signaturePos]
-	headerStr := tokenStr[:claimsPos]
-	claimsStr := tokenStr[claimsPos+1 : signaturePos]
-	signatureStr := tokenStr[signaturePos+1:]
+	encodedPayload := tokenStr[:signaturePos]
+	encodedHeader := tokenStr[:claimsPos]
+	encodedClaims := tokenStr[claimsPos+1 : signaturePos]
+	encodedSignature := tokenStr[signaturePos+1:]
 	// Verify signature
-	rawSignature, err := DefaultEncoding.DecodeString(signatureStr)
+	signature, err := DefaultEncoding.DecodeString(encodedSignature)
 	if err != nil {
 		return
 	}
-	err = sig.Verify(secret, payloadStr, rawSignature)
+	err = sig.Verify(secret, encodedPayload, signature)
 	if err != nil {
 		return
 	}
 	// Decode header
-	err = decodeBase64JSON(headerStr, &header)
+	err = decodeBase64JSON(encodedHeader, &token.Header)
 	if err != nil {
 		return
 	}
 	// Decode claims
-	err = decodeBase64JSON(claimsStr, &claims)
-	if err != nil {
-		return
-	}
-	err = validateHeader(header)
+	err = decodeBase64JSON(encodedClaims, &token.Claims)
 	return
 }
 
@@ -78,31 +79,13 @@ func VerifySignature(secret []byte, tokenStr string) error {
 	if signaturePos == -1 {
 		return errors.ErrMalformedToken
 	}
-	payloadBytes := tokenStr[:signaturePos]
-	signatureBytes := tokenStr[signaturePos+1:]
-	signature, err := DefaultEncoding.DecodeString(signatureBytes)
+	encodedPayload := tokenStr[:signaturePos]
+	encodedSignature := tokenStr[signaturePos+1:]
+	signature, err := DefaultEncoding.DecodeString(encodedSignature)
 	if err != nil {
 		return err
 	}
-	return sig.Verify(secret, payloadBytes, signature)
-}
-
-func validateHeader(header map[string]string) error {
-	alg, ok := header["alg"]
-	if !ok {
-		return errors.ErrInvalidHeader
-	}
-	if alg != "HS256" {
-		return errors.ErrInvalidAlgorithm
-	}
-	typ, ok := header["typ"]
-	if !ok {
-		return errors.ErrInvalidHeader
-	}
-	if typ != "JWT" {
-		return errors.ErrInvalidType
-	}
-	return nil
+	return sig.Verify(secret, encodedPayload, signature)
 }
 
 func decodeBase64JSON(data string, v interface{}) error {

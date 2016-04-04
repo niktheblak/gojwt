@@ -11,13 +11,16 @@ func NewContext(secret []byte) *JWTContext {
 }
 
 func (ctx *JWTContext) Encode(token JSONWebToken) (string, error) {
-	return encoder.Encode(ctx.secret, token.header, token.Claims)
+	return encoder.Encode(ctx.secret, encoder.Token{
+		Header: token.header,
+		Claims: token.Claims,
+	})
 }
 
 func (ctx *JWTContext) Decode(tokenStr string) (JSONWebToken, error) {
-	header, claims, err := encoder.Decode(ctx.secret, tokenStr)
+	token, err := encoder.Decode(ctx.secret, tokenStr)
 	return JSONWebToken{
-		header: header,
-		Claims: claims,
+		header: token.Header,
+		Claims: token.Claims,
 	}, err
 }
