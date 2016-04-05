@@ -21,7 +21,7 @@ func TestCustomContextHeader(t *testing.T) {
 	contextHeaders := map[string]interface{}{
 		"vendor": "ntb",
 	}
-	algo := sign.Algorithms["HS256"]
+	algo := sign.HS256()
 	ctx := NewContextWithConfig(Config{
 		Signer: sign.New(algo, testSecret),
 		Header: contextHeaders,
@@ -50,8 +50,7 @@ func TestCustomTokenHeader(t *testing.T) {
 }
 
 func TestUnsupportedAlgorithm(t *testing.T) {
-	algo := sign.Algorithms["HS256"]
-	signer := sign.New(algo, testSecret)
+	signer := sign.New(sign.HS256(), testSecret)
 	ctx := NewContextWithConfig(Config{
 		Signer: signer,
 	})

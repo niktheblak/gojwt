@@ -21,9 +21,8 @@ type TokenContext struct {
 }
 
 func NewContext(secret []byte) *TokenContext {
-	algo := sign.Algorithms["HS256"]
 	return NewContextWithConfig(Config{
-		Signer: sign.New(algo, secret),
+		Signer: sign.New(sign.HS256(), secret),
 		Header: nil,
 	})
 }
