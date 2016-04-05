@@ -4,11 +4,10 @@ import (
 	"github.com/niktheblak/jwt/encoder"
 	"github.com/niktheblak/jwt/errors"
 	"github.com/niktheblak/jwt/sign"
-	"github.com/niktheblak/jwt/sign/hs256"
 )
 
-var SupportedAlgorithms = map[sign.Algorithm]bool{
-	sign.AlgoHS256: true,
+var SupportedAlgorithms = map[string]bool{
+	"HS256": true,
 }
 
 type Config struct {
@@ -22,22 +21,23 @@ type TokenContext struct {
 }
 
 func NewContext(secret []byte) *TokenContext {
+	algo := sign.Algorithms["HS256"]
 	return NewContextWithConfig(Config{
-		Signer: hs256.New(secret),
+		Signer: sign.New(algo, secret),
 		Header: nil,
 	})
 }
 
 func NewContextWithConfig(config Config) *TokenContext {
 	algo := config.Signer.Algorithm()
-	if !SupportedAlgorithms[algo] {
+	if !SupportedAlgorithms[algo.Name] {
 		panic("Unsupported algorithm: " + algo.String())
 	}
 	header := make(map[string]interface{})
 	for k, v := range config.Header {
 		header[k] = v
 	}
-	header["alg"] = sign.AlgorithmNames[algo]
+	header["alg"] = algo.Name
 	header["typ"] = "JWT"
 	return &TokenContext{
 		config: config,
@@ -69,7 +69,7 @@ func (ctx *TokenContext) Decode(tokenStr string) (JSONWebToken, error) {
 }
 
 func (ctx *TokenContext) Validate(token JSONWebToken) error {
-	if token.Algorithm() != ctx.config.Signer.Algorithm() {
+	if token.Algorithm().Name != ctx.config.Signer.Algorithm().Name {
 		return errors.ErrInvalidAlgorithm
 	}
 	if token.Type() != "JWT" {

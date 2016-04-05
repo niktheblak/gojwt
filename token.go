@@ -20,10 +20,14 @@ func New() JSONWebToken {
 
 func (token JSONWebToken) Algorithm() sign.Algorithm {
 	name, ok := token.Header["alg"]
-	if ok {
-		return sign.AlgorithmsByName[name.(string)]
+	if !ok {
+		return sign.Algorithm{}
 	}
-	return sign.AlgoUnknown
+	algo, ok := sign.Algorithms[name.(string)]
+	if !ok {
+		return sign.Algorithm{}
+	}
+	return algo
 }
 
 func (token JSONWebToken) Type() string {

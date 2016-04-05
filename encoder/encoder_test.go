@@ -3,13 +3,15 @@ package encoder
 import (
 	"testing"
 
-	"github.com/niktheblak/jwt/sign/hs256"
+	"github.com/niktheblak/jwt/sign"
 	"github.com/stretchr/testify/assert"
 )
 
 var testSecret = []byte("secret")
 
-var testSigner = hs256.New(testSecret)
+var testAlgo = sign.Algorithms["HS256"]
+
+var testSigner = sign.New(testAlgo, testSecret)
 
 var testHeader = map[string]interface{}{
 	"alg": "HS256",

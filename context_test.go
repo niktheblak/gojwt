@@ -5,7 +5,7 @@ import (
 
 	"github.com/niktheblak/jwt/encoder"
 	"github.com/niktheblak/jwt/errors"
-	"github.com/niktheblak/jwt/sign/hs256"
+	"github.com/niktheblak/jwt/sign"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,8 +21,9 @@ func TestCustomContextHeader(t *testing.T) {
 	contextHeaders := map[string]interface{}{
 		"vendor": "ntb",
 	}
+	algo := sign.Algorithms["HS256"]
 	ctx := NewContextWithConfig(Config{
-		Signer: hs256.New(testSecret),
+		Signer: sign.New(algo, testSecret),
 		Header: contextHeaders,
 	})
 	token := New()
@@ -49,7 +50,8 @@ func TestCustomTokenHeader(t *testing.T) {
 }
 
 func TestUnsupportedAlgorithm(t *testing.T) {
-	signer := hs256.New(testSecret)
+	algo := sign.Algorithms["HS256"]
+	signer := sign.New(algo, testSecret)
 	ctx := NewContextWithConfig(Config{
 		Signer: signer,
 	})
