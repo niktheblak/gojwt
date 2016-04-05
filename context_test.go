@@ -21,7 +21,7 @@ func TestCustomContextHeader(t *testing.T) {
 	contextHeaders := map[string]interface{}{
 		"vendor": "ntb",
 	}
-	ctx := NewContextWithConfig(JWTConfig{
+	ctx := NewContextWithConfig(Config{
 		Signer: hs256.New(testSecret),
 		Header: contextHeaders,
 	})
@@ -50,7 +50,7 @@ func TestCustomTokenHeader(t *testing.T) {
 
 func TestUnsupportedAlgorithm(t *testing.T) {
 	signer := hs256.New(testSecret)
-	ctx := NewContextWithConfig(JWTConfig{
+	ctx := NewContextWithConfig(Config{
 		Signer: signer,
 	})
 	header := map[string]interface{}{

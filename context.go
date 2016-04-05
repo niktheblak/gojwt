@@ -11,24 +11,24 @@ var SupportedAlgorithms = map[sign.Algorithm]bool{
 	sign.AlgoHS256: true,
 }
 
-type JWTConfig struct {
+type Config struct {
 	Signer sign.Signer
 	Header map[string]interface{}
 }
 
-type JWTContext struct {
-	config JWTConfig
+type TokenContext struct {
+	config Config
 	header map[string]interface{}
 }
 
-func NewContext(secret []byte) *JWTContext {
-	return NewContextWithConfig(JWTConfig{
+func NewContext(secret []byte) *TokenContext {
+	return NewContextWithConfig(Config{
 		Signer: hs256.New(secret),
 		Header: nil,
 	})
 }
 
-func NewContextWithConfig(config JWTConfig) *JWTContext {
+func NewContextWithConfig(config Config) *TokenContext {
 	algo := config.Signer.Algorithm()
 	if !SupportedAlgorithms[algo] {
 		panic("Unsupported algorithm: " + algo.String())
@@ -39,13 +39,13 @@ func NewContextWithConfig(config JWTConfig) *JWTContext {
 	}
 	header["alg"] = sign.AlgorithmNames[algo]
 	header["typ"] = "JWT"
-	return &JWTContext{
+	return &TokenContext{
 		config: config,
 		header: header,
 	}
 }
 
-func (ctx *JWTContext) Encode(token JSONWebToken) (string, error) {
+func (ctx *TokenContext) Encode(token JSONWebToken) (string, error) {
 	var header map[string]interface{}
 	if token.Header == nil {
 		header = ctx.header
@@ -58,7 +58,7 @@ func (ctx *JWTContext) Encode(token JSONWebToken) (string, error) {
 	})
 }
 
-func (ctx *JWTContext) Decode(tokenStr string) (JSONWebToken, error) {
+func (ctx *TokenContext) Decode(tokenStr string) (JSONWebToken, error) {
 	token, err := encoder.Decode(ctx.config.Signer, tokenStr)
 	if err != nil {
 		return JSONWebToken{}, err
@@ -68,7 +68,7 @@ func (ctx *JWTContext) Decode(tokenStr string) (JSONWebToken, error) {
 	return jwt, err
 }
 
-func (ctx *JWTContext) Validate(token JSONWebToken) error {
+func (ctx *TokenContext) Validate(token JSONWebToken) error {
 	if token.Algorithm() != ctx.config.Signer.Algorithm() {
 		return errors.ErrInvalidAlgorithm
 	}
@@ -81,7 +81,7 @@ func (ctx *JWTContext) Validate(token JSONWebToken) error {
 	return nil
 }
 
-func (ctx *JWTContext) mergeHeaders(token JSONWebToken) map[string]interface{} {
+func (ctx *TokenContext) mergeHeaders(token JSONWebToken) map[string]interface{} {
 	header := make(map[string]interface{})
 	for k, v := range ctx.header {
 		header[k] = v
