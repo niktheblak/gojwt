@@ -10,6 +10,10 @@ type Algorithm struct {
 	Hash func() hash.Hash
 }
 
+func (algo Algorithm) String() string {
+	return algo.Name
+}
+
 var Algorithms = map[string]Algorithm{
 	"none": Algorithm{
 		Name: "none",
@@ -19,10 +23,6 @@ var Algorithms = map[string]Algorithm{
 		Name: "HS256",
 		Hash: sha256.New,
 	},
-}
-
-func (algo Algorithm) String() string {
-	return algo.Name
 }
 
 func None() Algorithm {

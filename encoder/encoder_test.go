@@ -8,24 +8,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var testSecret = []byte("secret")
-
-var testAlgo = algorithm.Algorithms["HS256"]
-
-var testSigner = sign.New(testAlgo, testSecret)
-
-var testHeader = map[string]interface{}{
-	"alg": "HS256",
-	"typ": "JWT",
-}
-
-var testClaims = map[string]interface{}{
-	"sub":   "1234567890",
-	"name":  "John Doe",
-	"admin": true,
-}
-
-var testToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwibmFtZSI6IkpvaG4gRG9lIiwic3ViIjoiMTIzNDU2Nzg5MCJ9.eNK_fimsCW3Q-meOXyc_dnZHubl2D4eZkIcn6llniCk"
+var (
+	testSecret = []byte("secret")
+	testAlgo   = algorithm.HS256()
+	testSigner = sign.New(testAlgo, testSecret)
+	testHeader = map[string]interface{}{
+		"alg": "HS256",
+		"typ": "JWT",
+	}
+	testClaims = map[string]interface{}{
+		"sub":   "1234567890",
+		"name":  "John Doe",
+		"admin": true,
+	}
+	testToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwibmFtZSI6IkpvaG4gRG9lIiwic3ViIjoiMTIzNDU2Nzg5MCJ9.eNK_fimsCW3Q-meOXyc_dnZHubl2D4eZkIcn6llniCk"
+)
 
 func TestEncode(t *testing.T) {
 	token := Token{

@@ -1,15 +1,6 @@
 package sign
 
-import (
-	"errors"
-
-	"github.com/niktheblak/jwt/sign/algorithm"
-)
-
-// Signature-related errors
-var (
-	ErrInvalidSignature = errors.New("Invalid signature")
-)
+import "github.com/niktheblak/jwt/sign/algorithm"
 
 type Signer interface {
 	Algorithm() algorithm.Algorithm
