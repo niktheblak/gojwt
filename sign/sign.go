@@ -1,6 +1,10 @@
 package sign
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/niktheblak/jwt/sign/algorithm"
+)
 
 // Signature-related errors
 var (
@@ -8,7 +12,7 @@ var (
 )
 
 type Signer interface {
-	Algorithm() Algorithm
+	Algorithm() algorithm.Algorithm
 	Sign(data string) []byte
 	Verify(data string, signature []byte) error
 }

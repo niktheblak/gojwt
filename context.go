@@ -4,6 +4,7 @@ import (
 	"github.com/niktheblak/jwt/encoder"
 	"github.com/niktheblak/jwt/errors"
 	"github.com/niktheblak/jwt/sign"
+	"github.com/niktheblak/jwt/sign/algorithm"
 )
 
 var SupportedAlgorithms = map[string]bool{
@@ -22,7 +23,7 @@ type TokenContext struct {
 
 func NewContext(secret []byte) *TokenContext {
 	return NewContextWithConfig(Config{
-		Signer: sign.New(sign.HS256(), secret),
+		Signer: sign.New(algorithm.HS256(), secret),
 		Header: nil,
 	})
 }

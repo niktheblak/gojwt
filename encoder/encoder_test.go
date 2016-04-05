@@ -4,12 +4,13 @@ import (
 	"testing"
 
 	"github.com/niktheblak/jwt/sign"
+	"github.com/niktheblak/jwt/sign/algorithm"
 	"github.com/stretchr/testify/assert"
 )
 
 var testSecret = []byte("secret")
 
-var testAlgo = sign.Algorithms["HS256"]
+var testAlgo = algorithm.Algorithms["HS256"]
 
 var testSigner = sign.New(testAlgo, testSecret)
 

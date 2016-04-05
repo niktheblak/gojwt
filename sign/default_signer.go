@@ -3,14 +3,16 @@ package sign
 import (
 	"crypto/hmac"
 	"hash"
+
+	"github.com/niktheblak/jwt/sign/algorithm"
 )
 
 type defaultSigner struct {
-	algo   Algorithm
+	algo   algorithm.Algorithm
 	secret []byte
 }
 
-func New(algo Algorithm, secret []byte) Signer {
+func New(algo algorithm.Algorithm, secret []byte) Signer {
 	return defaultSigner{
 		algo:   algo,
 		secret: secret,
@@ -21,7 +23,7 @@ func (s defaultSigner) newMac() hash.Hash {
 	return hmac.New(s.algo.Hash, s.secret)
 }
 
-func (s defaultSigner) Algorithm() Algorithm {
+func (s defaultSigner) Algorithm() algorithm.Algorithm {
 	return s.algo
 }
 

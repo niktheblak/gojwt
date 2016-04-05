@@ -3,7 +3,7 @@ package jwt
 import (
 	"time"
 
-	"github.com/niktheblak/jwt/sign"
+	"github.com/niktheblak/jwt/sign/algorithm"
 )
 
 type JSONWebToken struct {
@@ -18,14 +18,14 @@ func New() JSONWebToken {
 	}
 }
 
-func (token JSONWebToken) Algorithm() sign.Algorithm {
+func (token JSONWebToken) Algorithm() algorithm.Algorithm {
 	name, ok := token.Header["alg"]
 	if !ok {
-		return sign.Algorithm{}
+		return algorithm.Algorithm{}
 	}
-	algo, ok := sign.Algorithms[name.(string)]
+	algo, ok := algorithm.Algorithms[name.(string)]
 	if !ok {
-		return sign.Algorithm{}
+		return algorithm.Algorithm{}
 	}
 	return algo
 }

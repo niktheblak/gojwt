@@ -1,4 +1,4 @@
-package sign
+package algorithm
 
 import (
 	"crypto/sha256"
@@ -23,4 +23,12 @@ var Algorithms = map[string]Algorithm{
 
 func (algo Algorithm) String() string {
 	return algo.Name
+}
+
+func None() Algorithm {
+	return Algorithms["none"]
+}
+
+func HS256() Algorithm {
+	return Algorithms["HS256"]
 }
