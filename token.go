@@ -6,19 +6,19 @@ import (
 	"github.com/niktheblak/jwt/sign/algorithm"
 )
 
-type JSONWebToken struct {
+type Token struct {
 	Claims map[string]interface{}
 	Header map[string]interface{}
 }
 
-func New() JSONWebToken {
-	return JSONWebToken{
+func New() Token {
+	return Token{
 		Claims: make(map[string]interface{}),
 		Header: nil,
 	}
 }
 
-func (token JSONWebToken) Algorithm() (algo algorithm.Algorithm) {
+func (token Token) Algorithm() (algo algorithm.Algorithm) {
 	if token.Header == nil {
 		return
 	}
@@ -30,7 +30,7 @@ func (token JSONWebToken) Algorithm() (algo algorithm.Algorithm) {
 	return
 }
 
-func (token JSONWebToken) Type() (typ string) {
+func (token Token) Type() (typ string) {
 	if token.Header == nil {
 		return
 	}
@@ -41,7 +41,7 @@ func (token JSONWebToken) Type() (typ string) {
 	return
 }
 
-func (token JSONWebToken) Expired() bool {
+func (token Token) Expired() bool {
 	ts, ok := token.Claims["exp"]
 	if ok {
 		tsint := ts.(int64)
@@ -51,7 +51,7 @@ func (token JSONWebToken) Expired() bool {
 	return false
 }
 
-func (token JSONWebToken) Expiration() (time.Time, bool) {
+func (token Token) Expiration() (time.Time, bool) {
 	ts, ok := token.Claims["exp"]
 	if ok {
 		tsint := ts.(int64)
@@ -61,6 +61,6 @@ func (token JSONWebToken) Expiration() (time.Time, bool) {
 	return time.Time{}, false
 }
 
-func (token *JSONWebToken) SetExpiration(exp time.Time) {
+func (token *Token) SetExpiration(exp time.Time) {
 	token.Claims["exp"] = exp.Unix()
 }

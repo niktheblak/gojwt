@@ -45,7 +45,7 @@ func NewContextWithConfig(config Config) *TokenContext {
 	}
 }
 
-func (ctx *TokenContext) Encode(token JSONWebToken) (string, error) {
+func (ctx *TokenContext) Encode(token Token) (string, error) {
 	var header map[string]interface{}
 	if token.Header == nil {
 		header = ctx.header
@@ -58,17 +58,17 @@ func (ctx *TokenContext) Encode(token JSONWebToken) (string, error) {
 	})
 }
 
-func (ctx *TokenContext) Decode(tokenStr string) (JSONWebToken, error) {
+func (ctx *TokenContext) Decode(tokenStr string) (Token, error) {
 	token, err := encoder.Decode(ctx.config.Signer, tokenStr)
 	if err != nil {
-		return JSONWebToken{}, err
+		return Token{}, err
 	}
 	jwt := fromToken(token)
 	err = ctx.Validate(jwt)
 	return jwt, err
 }
 
-func (ctx *TokenContext) Validate(token JSONWebToken) error {
+func (ctx *TokenContext) Validate(token Token) error {
 	if token.Algorithm().Name != ctx.config.Signer.Algorithm().Name {
 		return errors.ErrInvalidAlgorithm
 	}
@@ -81,7 +81,7 @@ func (ctx *TokenContext) Validate(token JSONWebToken) error {
 	return nil
 }
 
-func (ctx *TokenContext) mergeHeaders(token JSONWebToken) map[string]interface{} {
+func (ctx *TokenContext) mergeHeaders(token Token) map[string]interface{} {
 	header := make(map[string]interface{})
 	for k, v := range ctx.header {
 		header[k] = v
@@ -92,8 +92,8 @@ func (ctx *TokenContext) mergeHeaders(token JSONWebToken) map[string]interface{}
 	return header
 }
 
-func fromToken(token encoder.Token) JSONWebToken {
-	return JSONWebToken{
+func fromToken(token encoder.Token) Token {
+	return Token{
 		Header: token.Header,
 		Claims: token.Claims,
 	}
