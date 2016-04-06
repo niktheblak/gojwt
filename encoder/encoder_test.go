@@ -40,6 +40,22 @@ func TestDecode(t *testing.T) {
 	assert.Equal(t, testClaims, token.Claims)
 }
 
+func BenchmarkEncode(b *testing.B) {
+	token := Token{
+		Header: testHeader,
+		Claims: testClaims,
+	}
+	for i := 0; i < b.N; i++ {
+		Encode(testSigner, token)
+	}
+}
+
+func BenchmarkDecode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Decode(testSigner, testToken)
+	}
+}
+
 func TestRoundTrip(t *testing.T) {
 	token := Token{
 		Header: testHeader,
