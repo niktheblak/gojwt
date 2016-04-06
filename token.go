@@ -18,20 +18,27 @@ func New() JSONWebToken {
 	}
 }
 
-func (token JSONWebToken) Algorithm() algorithm.Algorithm {
+func (token JSONWebToken) Algorithm() (algo algorithm.Algorithm) {
+	if token.Header == nil {
+		return
+	}
 	name, ok := token.Header["alg"]
 	if !ok {
-		return algorithm.Algorithm{}
+		return
 	}
-	algo, ok := algorithm.Algorithms[name.(string)]
-	if !ok {
-		return algorithm.Algorithm{}
-	}
-	return algo
+	algo = algorithm.Algorithms[name.(string)]
+	return
 }
 
-func (token JSONWebToken) Type() string {
-	return token.Header["typ"].(string)
+func (token JSONWebToken) Type() (typ string) {
+	if token.Header == nil {
+		return
+	}
+	t, ok := token.Header["typ"]
+	if ok {
+		typ = t.(string)
+	}
+	return
 }
 
 func (token JSONWebToken) Expired() bool {
@@ -54,6 +61,6 @@ func (token JSONWebToken) Expiration() (time.Time, bool) {
 	return time.Time{}, false
 }
 
-func (token JSONWebToken) SetExpiration(exp time.Time) {
+func (token *JSONWebToken) SetExpiration(exp time.Time) {
 	token.Claims["exp"] = exp.Unix()
 }
