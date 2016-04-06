@@ -90,6 +90,9 @@ func VerifySignature(sig sign.Signer, tokenStr string) error {
 
 func decodeBase64JSON(data string, v interface{}) error {
 	decoded, err := DefaultEncoding.DecodeString(data)
+	if err != nil {
+		return err
+	}
 	err = json.Unmarshal(decoded, v)
 	if err != nil {
 		return err
