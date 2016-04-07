@@ -107,6 +107,7 @@ func (token *Token) SetExpiration(exp time.Time) {
 }
 
 func (token *Token) Validate() error {
+	token.checkSigner()
 	if token.Algorithm().Name != token.Signer.Algorithm().Name {
 		return errors.ErrInvalidAlgorithm
 	}
@@ -120,6 +121,7 @@ func (token *Token) Validate() error {
 }
 
 func (token *Token) Encode() (string, error) {
+	token.checkSigner()
 	var buf bytes.Buffer
 	encoder := base64.NewEncoder(DefaultEncoding, &buf)
 	headerJSON, err := json.Marshal(token.Header)
@@ -141,6 +143,7 @@ func (token *Token) Encode() (string, error) {
 }
 
 func (token *Token) Decode(tokenStr string) (err error) {
+	token.checkSigner()
 	claimsPos := strings.IndexByte(tokenStr, '.')
 	if claimsPos == -1 {
 		err = errors.ErrMalformedToken
@@ -181,6 +184,7 @@ func (token *Token) Decode(tokenStr string) (err error) {
 }
 
 func (token *Token) VerifySignature(tokenStr string) error {
+	token.checkSigner()
 	signaturePos := strings.LastIndexByte(tokenStr, '.')
 	if signaturePos == -1 {
 		return errors.ErrMalformedToken
@@ -192,6 +196,15 @@ func (token *Token) VerifySignature(tokenStr string) error {
 		return err
 	}
 	return token.Signer.Verify(encodedPayload, signature)
+}
+
+func (token *Token) checkSigner() {
+	if token.Signer == nil && defaultSigner == nil {
+		panic("Neither token signer nor default signer has not been set")
+	}
+	if token.Signer == nil {
+		token.Signer = defaultSigner
+	}
 }
 
 func decodeBase64JSON(data string, v interface{}) error {
