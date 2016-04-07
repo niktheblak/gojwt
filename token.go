@@ -9,7 +9,6 @@ import (
 
 	"github.com/niktheblak/jwt/errors"
 	"github.com/niktheblak/jwt/sign"
-	"github.com/niktheblak/jwt/sign/algorithm"
 )
 
 const DefaultType = "JWT"
@@ -55,7 +54,7 @@ func NewWithHeaderAndClaims(header, claims map[string]interface{}) *Token {
 	if defaultSigner == nil {
 		panic("SetDefaultSigner has not been called")
 	}
-	if defaultSigner.Algorithm().Name != header["alg"] {
+	if defaultSigner.Algorithm() != header["alg"] {
 		panic("Algorithm used with signer does not match the one given in header")
 	}
 	return &Token{
@@ -65,13 +64,8 @@ func NewWithHeaderAndClaims(header, claims map[string]interface{}) *Token {
 	}
 }
 
-func (token *Token) Algorithm() (algo algorithm.Algorithm) {
-	name, ok := token.Header["alg"]
-	if !ok {
-		return
-	}
-	algo = algorithm.Algorithms[name.(string)]
-	return
+func (token *Token) Algorithm() string {
+	return token.Signer.Algorithm()
 }
 
 func (token *Token) Type() (typ string) {
@@ -105,7 +99,7 @@ func (token *Token) SetExpiration(exp time.Time) {
 
 func (token *Token) Validate() error {
 	token.checkSigner()
-	if token.Algorithm().Name != token.Signer.Algorithm().Name {
+	if token.Algorithm() != token.Signer.Algorithm() {
 		return errors.ErrInvalidAlgorithm
 	}
 	if token.Type() != "JWT" {
@@ -219,7 +213,7 @@ func decodeBase64JSON(data string, v interface{}) error {
 func createHeader(sig sign.Signer) map[string]interface{} {
 	header := make(map[string]interface{})
 	header["typ"] = DefaultType
-	header["alg"] = sig.Algorithm().Name
+	header["alg"] = sig.Algorithm()
 	return header
 }
 

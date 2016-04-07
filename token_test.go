@@ -6,14 +6,12 @@ import (
 
 	"github.com/niktheblak/jwt/errors"
 	"github.com/niktheblak/jwt/sign"
-	"github.com/niktheblak/jwt/sign/algorithm"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
 	testSecret = []byte("secret")
-	testAlgo   = algorithm.HS256()
-	testSigner = sign.New(testAlgo, testSecret)
+	testSigner = sign.HS256(testSecret)
 	testHeader = map[string]interface{}{
 		"alg": "HS256",
 		"typ": "JWT",
