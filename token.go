@@ -24,7 +24,7 @@ func SetDefaultSigner(sig sign.Signer) {
 }
 
 type Token struct {
-	signer sign.Signer
+	Signer sign.Signer
 	Header map[string]interface{}
 	Claims map[string]interface{}
 }
@@ -33,41 +33,33 @@ func New() *Token {
 	if defaultSigner == nil {
 		panic("SetDefaultSigner has not been called")
 	}
-	header := createHeader(defaultSigner)
-	return newToken(defaultSigner, header, make(map[string]interface{}))
+	return &Token{
+		Signer: defaultSigner,
+		Header: createHeader(defaultSigner),
+		Claims: make(map[string]interface{}),
+	}
 }
 
 func NewWithClaims(claims map[string]interface{}) *Token {
 	if defaultSigner == nil {
 		panic("SetDefaultSigner has not been called")
 	}
-	header := createHeader(defaultSigner)
-	return newToken(defaultSigner, header, claims)
+	return &Token{
+		Signer: defaultSigner,
+		Header: createHeader(defaultSigner),
+		Claims: claims,
+	}
 }
 
 func NewWithHeaderAndClaims(header, claims map[string]interface{}) *Token {
 	if defaultSigner == nil {
 		panic("SetDefaultSigner has not been called")
 	}
-	return newToken(defaultSigner, header, claims)
-}
-
-func NewWithSigner(sig sign.Signer) *Token {
-	header := createHeader(sig)
-	return newToken(sig, header, make(map[string]interface{}))
-}
-
-func NewWithSignerAndClaims(sig sign.Signer, claims map[string]interface{}) *Token {
-	header := createHeader(sig)
-	return newToken(sig, header, claims)
-}
-
-func newToken(sig sign.Signer, header, claims map[string]interface{}) *Token {
-	if sig.Algorithm().Name != header["alg"] {
+	if defaultSigner.Algorithm().Name != header["alg"] {
 		panic("Algorithm used with signer does not match the one given in header")
 	}
 	return &Token{
-		signer: sig,
+		Signer: defaultSigner,
 		Header: header,
 		Claims: claims,
 	}
@@ -115,7 +107,7 @@ func (token *Token) SetExpiration(exp time.Time) {
 }
 
 func (token *Token) Validate() error {
-	if token.Algorithm().Name != token.signer.Algorithm().Name {
+	if token.Algorithm().Name != token.Signer.Algorithm().Name {
 		return errors.ErrInvalidAlgorithm
 	}
 	if token.Type() != "JWT" {
@@ -141,7 +133,7 @@ func (token *Token) Encode() (string, error) {
 		return "", err
 	}
 	encoder.Write(claimsJSON)
-	signature := token.signer.Sign(buf.String())
+	signature := token.Signer.Sign(buf.String())
 	buf.WriteByte('.')
 	encoder.Write(signature)
 	encoder.Close()
@@ -168,7 +160,7 @@ func (token *Token) Decode(tokenStr string) (err error) {
 	if err != nil {
 		return
 	}
-	err = token.signer.Verify(encodedPayload, signature)
+	err = token.Signer.Verify(encodedPayload, signature)
 	if err != nil {
 		return
 	}
@@ -199,7 +191,7 @@ func (token *Token) VerifySignature(tokenStr string) error {
 	if err != nil {
 		return err
 	}
-	return token.signer.Verify(encodedPayload, signature)
+	return token.Signer.Verify(encodedPayload, signature)
 }
 
 func decodeBase64JSON(data string, v interface{}) error {
