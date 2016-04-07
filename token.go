@@ -83,10 +83,8 @@ func (token *Token) Type() (typ string) {
 }
 
 func (token *Token) Expired() bool {
-	ts, ok := token.Claims["exp"]
+	exp, ok := token.Expiration()
 	if ok {
-		tsint := ts.(int64)
-		exp := time.Unix(tsint, 0)
 		return exp.Before(time.Now())
 	}
 	return false
@@ -95,9 +93,8 @@ func (token *Token) Expired() bool {
 func (token *Token) Expiration() (time.Time, bool) {
 	ts, ok := token.Claims["exp"]
 	if ok {
-		tsint := ts.(int64)
-		exp := time.Unix(tsint, 0)
-		return exp, true
+		exp, ok := toTimeStamp(ts)
+		return exp, ok
 	}
 	return time.Time{}, false
 }
@@ -224,4 +221,28 @@ func createHeader(sig sign.Signer) map[string]interface{} {
 	header["typ"] = DefaultType
 	header["alg"] = sig.Algorithm().Name
 	return header
+}
+
+func toTimeStamp(s interface{}) (ts time.Time, ok bool) {
+	ok = true
+	var tsInt int64
+	switch t := s.(type) {
+	case float32:
+		tsInt = int64(t)
+	case float64:
+		tsInt = int64(t)
+	case int:
+		tsInt = int64(t)
+	case uint:
+		tsInt = int64(t)
+	case int64:
+		tsInt = t
+	case uint64:
+		tsInt = int64(t)
+	default:
+		ok = false
+		return
+	}
+	ts = time.Unix(tsInt, 0)
+	return
 }

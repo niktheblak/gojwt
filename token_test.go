@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"testing"
+	"time"
 
 	"github.com/niktheblak/jwt/errors"
 	"github.com/niktheblak/jwt/sign"
@@ -107,4 +108,15 @@ func TestSignature(t *testing.T) {
 	assert.NoError(t, err)
 	err = token.VerifySignature(encoded)
 	assert.NoError(t, err)
+}
+
+func TestExpiredToken(t *testing.T) {
+	token := New()
+	ts := time.Now().Add(time.Hour * -1)
+	token.SetExpiration(ts)
+	encoded, err := token.Encode()
+	assert.NoError(t, err)
+	decoded := New()
+	err = decoded.Decode(encoded)
+	assert.EqualError(t, err, errors.ErrExpiredToken.Error())
 }
