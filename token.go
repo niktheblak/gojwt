@@ -26,7 +26,7 @@ func SetDefaultSigner(sig sign.Signer) {
 
 type Token struct {
 	signer sign.Signer
-	Header map[string]interface{}
+	header map[string]interface{}
 	Claims map[string]interface{}
 }
 
@@ -57,7 +57,7 @@ func NewWithSigner(sig sign.Signer) *Token {
 	header["alg"] = sig.Algorithm().Name
 	return &Token{
 		signer: sig,
-		Header: header,
+		header: header,
 		Claims: make(map[string]interface{}),
 	}
 }
@@ -66,7 +66,7 @@ func NewWithSignerAndClaims(sig sign.Signer, claims map[string]interface{}) *Tok
 	header := createHeader(sig)
 	return &Token{
 		signer: sig,
-		Header: header,
+		header: header,
 		Claims: claims,
 	}
 }
@@ -77,18 +77,26 @@ func newToken(sig sign.Signer, header, claims map[string]interface{}) *Token {
 	}
 	return &Token{
 		signer: sig,
-		Header: header,
+		header: header,
 		Claims: claims,
 	}
 }
 
 var DefaultEncoding = base64.RawURLEncoding
 
-func (token *Token) Algorithm() (algo algorithm.Algorithm) {
-	if token.Header == nil {
-		return
+func (token *Token) Header(key string) interface{} {
+	return token.header[key]
+}
+
+func (token *Token) SetHeader(key string, value interface{}) {
+	if &token.header == &defaultHeader {
+		token.header = make(map[string]interface{})
 	}
-	name, ok := token.Header["alg"]
+	token.header[key] = value
+}
+
+func (token *Token) Algorithm() (algo algorithm.Algorithm) {
+	name, ok := token.header["alg"]
 	if !ok {
 		return
 	}
@@ -97,10 +105,7 @@ func (token *Token) Algorithm() (algo algorithm.Algorithm) {
 }
 
 func (token *Token) Type() (typ string) {
-	if token.Header == nil {
-		return
-	}
-	t, ok := token.Header["typ"]
+	t, ok := token.header["typ"]
 	if ok {
 		typ = t.(string)
 	}
@@ -147,7 +152,7 @@ func (token *Token) Validate() error {
 func (token *Token) Encode() (string, error) {
 	var buf bytes.Buffer
 	encoder := base64.NewEncoder(DefaultEncoding, &buf)
-	headerJSON, err := json.Marshal(token.Header)
+	headerJSON, err := json.Marshal(token.header)
 	if err != nil {
 		return "", err
 	}
@@ -190,8 +195,8 @@ func (token *Token) Decode(tokenStr string) (err error) {
 		return
 	}
 	// Decode header
-	token.Header = make(map[string]interface{})
-	err = decodeBase64JSON(encodedHeader, &token.Header)
+	token.header = make(map[string]interface{})
+	err = decodeBase64JSON(encodedHeader, &token.header)
 	if err != nil {
 		return
 	}

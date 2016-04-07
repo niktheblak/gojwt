@@ -31,13 +31,13 @@ func init() {
 
 func TestCustomTokenHeader(t *testing.T) {
 	token := New()
-	token.Header["vendor"] = "ntb"
+	token.SetHeader("vendor", "ntb")
 	token.Claims = testClaims
 	tokenStr, err := token.Encode()
 	assert.NoError(t, err)
 	err = token.Decode(tokenStr)
 	assert.NoError(t, err)
-	assert.Equal(t, "ntb", token.Header["vendor"])
+	assert.Equal(t, "ntb", token.Header("vendor"))
 }
 
 func TestUnsupportedAlgorithm(t *testing.T) {
@@ -47,7 +47,7 @@ func TestUnsupportedAlgorithm(t *testing.T) {
 	}
 	token := &Token{
 		signer: testSigner,
-		Header: header,
+		header: header,
 		Claims: testClaims,
 	}
 	tokenStr, err := token.Encode()
@@ -85,13 +85,13 @@ func BenchmarkDecode(b *testing.B) {
 }
 
 func TestRoundTrip(t *testing.T) {
-	token := NewWithHeaderAndClaims(testHeader, testClaims)
+	token := NewWithClaims(testClaims)
 	encoded, err := token.Encode()
 	assert.NoError(t, err)
 	decoded := New()
 	err = decoded.Decode(encoded)
 	assert.NoError(t, err)
-	assert.Equal(t, token.Header, decoded.Header)
+	assert.Equal(t, token.header, decoded.header)
 	assert.Equal(t, token.Claims, decoded.Claims)
 }
 
