@@ -15,60 +15,51 @@ import (
 const DefaultType = "JWT"
 
 var (
-	DefaultSigner sign.Signer
-	defaultHeader map[string]interface{}
+	DefaultEncoding = base64.RawURLEncoding
+	defaultSigner   sign.Signer
 )
 
 func SetDefaultSigner(sig sign.Signer) {
-	DefaultSigner = sig
-	defaultHeader = createHeader(sig)
+	defaultSigner = sig
 }
 
 type Token struct {
 	signer sign.Signer
-	header map[string]interface{}
+	Header map[string]interface{}
 	Claims map[string]interface{}
 }
 
 func New() *Token {
-	if DefaultSigner == nil {
+	if defaultSigner == nil {
 		panic("SetDefaultSigner has not been called")
 	}
-	return newToken(DefaultSigner, defaultHeader, make(map[string]interface{}))
+	header := createHeader(defaultSigner)
+	return newToken(defaultSigner, header, make(map[string]interface{}))
 }
 
 func NewWithClaims(claims map[string]interface{}) *Token {
-	if DefaultSigner == nil {
+	if defaultSigner == nil {
 		panic("SetDefaultSigner has not been called")
 	}
-	return newToken(DefaultSigner, defaultHeader, claims)
+	header := createHeader(defaultSigner)
+	return newToken(defaultSigner, header, claims)
 }
 
 func NewWithHeaderAndClaims(header, claims map[string]interface{}) *Token {
-	if DefaultSigner == nil {
+	if defaultSigner == nil {
 		panic("SetDefaultSigner has not been called")
 	}
-	return newToken(DefaultSigner, header, claims)
+	return newToken(defaultSigner, header, claims)
 }
 
 func NewWithSigner(sig sign.Signer) *Token {
 	header := createHeader(sig)
-	header["typ"] = DefaultType
-	header["alg"] = sig.Algorithm().Name
-	return &Token{
-		signer: sig,
-		header: header,
-		Claims: make(map[string]interface{}),
-	}
+	return newToken(sig, header, make(map[string]interface{}))
 }
 
 func NewWithSignerAndClaims(sig sign.Signer, claims map[string]interface{}) *Token {
 	header := createHeader(sig)
-	return &Token{
-		signer: sig,
-		header: header,
-		Claims: claims,
-	}
+	return newToken(sig, header, claims)
 }
 
 func newToken(sig sign.Signer, header, claims map[string]interface{}) *Token {
@@ -77,26 +68,13 @@ func newToken(sig sign.Signer, header, claims map[string]interface{}) *Token {
 	}
 	return &Token{
 		signer: sig,
-		header: header,
+		Header: header,
 		Claims: claims,
 	}
 }
 
-var DefaultEncoding = base64.RawURLEncoding
-
-func (token *Token) Header(key string) interface{} {
-	return token.header[key]
-}
-
-func (token *Token) SetHeader(key string, value interface{}) {
-	if &token.header == &defaultHeader {
-		token.header = make(map[string]interface{})
-	}
-	token.header[key] = value
-}
-
 func (token *Token) Algorithm() (algo algorithm.Algorithm) {
-	name, ok := token.header["alg"]
+	name, ok := token.Header["alg"]
 	if !ok {
 		return
 	}
@@ -105,7 +83,7 @@ func (token *Token) Algorithm() (algo algorithm.Algorithm) {
 }
 
 func (token *Token) Type() (typ string) {
-	t, ok := token.header["typ"]
+	t, ok := token.Header["typ"]
 	if ok {
 		typ = t.(string)
 	}
@@ -152,7 +130,7 @@ func (token *Token) Validate() error {
 func (token *Token) Encode() (string, error) {
 	var buf bytes.Buffer
 	encoder := base64.NewEncoder(DefaultEncoding, &buf)
-	headerJSON, err := json.Marshal(token.header)
+	headerJSON, err := json.Marshal(token.Header)
 	if err != nil {
 		return "", err
 	}
@@ -195,8 +173,8 @@ func (token *Token) Decode(tokenStr string) (err error) {
 		return
 	}
 	// Decode header
-	token.header = make(map[string]interface{})
-	err = decodeBase64JSON(encodedHeader, &token.header)
+	token.Header = make(map[string]interface{})
+	err = decodeBase64JSON(encodedHeader, &token.Header)
 	if err != nil {
 		return
 	}
