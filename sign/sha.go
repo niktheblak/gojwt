@@ -4,8 +4,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"hash"
-
-	"github.com/niktheblak/jwt/errors"
 )
 
 type shaSigner struct {
@@ -41,7 +39,7 @@ func (s shaSigner) Verify(data string, signature []byte) error {
 	mac.Write([]byte(data))
 	expectedSignature := mac.Sum(nil)
 	if !hmac.Equal(signature, expectedSignature) {
-		return errors.ErrInvalidSignature
+		return ErrInvalidSignature
 	}
 	return nil
 }

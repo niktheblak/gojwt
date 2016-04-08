@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/niktheblak/jwt/errors"
 	"github.com/niktheblak/jwt/sign"
 )
 
@@ -28,55 +27,51 @@ type Token struct {
 	Claims map[string]interface{}
 }
 
-func New() *Token {
+func New() Token {
 	if defaultSigner == nil {
 		panic("SetDefaultSigner has not been called")
 	}
-	return &Token{
+	return Token{
 		Signer: defaultSigner,
 		Header: createHeader(defaultSigner),
 		Claims: make(map[string]interface{}),
 	}
 }
 
-func NewWithClaims(claims map[string]interface{}) *Token {
+func NewWithClaims(claims map[string]interface{}) Token {
 	if defaultSigner == nil {
 		panic("SetDefaultSigner has not been called")
 	}
-	return &Token{
+	return Token{
 		Signer: defaultSigner,
 		Header: createHeader(defaultSigner),
 		Claims: claims,
 	}
 }
 
-func NewWithHeaderAndClaims(header, claims map[string]interface{}) *Token {
+func NewWithHeaderAndClaims(header, claims map[string]interface{}) Token {
 	if defaultSigner == nil {
 		panic("SetDefaultSigner has not been called")
 	}
 	if defaultSigner.Algorithm() != header["alg"] {
 		panic("Algorithm used with signer does not match the one given in header")
 	}
-	return &Token{
+	return Token{
 		Signer: defaultSigner,
 		Header: header,
 		Claims: claims,
 	}
 }
 
-func (token *Token) Algorithm() string {
-	return token.Signer.Algorithm()
+func (token Token) Algorithm() string {
+	return token.Header["alg"].(string)
 }
 
-func (token *Token) Type() (typ string) {
-	t, ok := token.Header["typ"]
-	if ok {
-		typ = t.(string)
-	}
-	return
+func (token Token) Type() string {
+	return token.Header["typ"].(string)
 }
 
-func (token *Token) Expired() bool {
+func (token Token) Expired() bool {
 	exp, ok := token.Expiration()
 	if ok {
 		return exp.Before(time.Now())
@@ -84,11 +79,9 @@ func (token *Token) Expired() bool {
 	return false
 }
 
-func (token *Token) Expiration() (time.Time, bool) {
-	ts, ok := token.Claims["exp"]
-	if ok {
-		exp, ok := toTimeStamp(ts)
-		return exp, ok
+func (token Token) Expiration() (time.Time, bool) {
+	if ts, ok := token.Claims["exp"]; ok {
+		return toTimeStamp(ts)
 	}
 	return time.Time{}, false
 }
@@ -97,22 +90,29 @@ func (token *Token) SetExpiration(exp time.Time) {
 	token.Claims["exp"] = exp.Unix()
 }
 
-func (token *Token) Validate() error {
-	token.checkSigner()
-	if token.Algorithm() != token.Signer.Algorithm() {
-		return errors.ErrInvalidAlgorithm
+func (token Token) Validate() error {
+	if err := token.validateSigner(); err != nil {
+		return err
 	}
-	if token.Type() != "JWT" {
-		return errors.ErrInvalidType
+	if token.Algorithm() != token.Signer.Algorithm() {
+		return ErrInvalidAlgorithm
+	}
+	if token.Type() != DefaultType {
+		return ErrInvalidType
 	}
 	if token.Expired() {
-		return errors.ErrExpiredToken
+		return ErrExpiredToken
 	}
 	return nil
 }
 
-func (token *Token) Encode() (string, error) {
-	token.checkSigner()
+func (token Token) Encode() (string, error) {
+	if err := token.validateSigner(); err != nil {
+		return "", err
+	}
+	if err := token.validateHeader(); err != nil {
+		return "", err
+	}
 	var buf bytes.Buffer
 	encoder := base64.NewEncoder(DefaultEncoding, &buf)
 	headerJSON, err := json.Marshal(token.Header)
@@ -133,17 +133,17 @@ func (token *Token) Encode() (string, error) {
 	return buf.String(), nil
 }
 
-func (token *Token) Decode(tokenStr string) (err error) {
-	token.checkSigner()
+func (token *Token) Decode(tokenStr string) error {
+	if err := token.validateSigner(); err != nil {
+		return err
+	}
 	claimsPos := strings.IndexByte(tokenStr, '.')
 	if claimsPos == -1 {
-		err = errors.ErrMalformedToken
-		return
+		return ErrMalformedToken
 	}
 	signaturePos := strings.LastIndexByte(tokenStr, '.')
 	if signaturePos == claimsPos {
-		err = errors.ErrMalformedToken
-		return
+		return ErrMalformedToken
 	}
 	encodedPayload := tokenStr[:signaturePos]
 	encodedHeader := tokenStr[:claimsPos]
@@ -152,33 +152,34 @@ func (token *Token) Decode(tokenStr string) (err error) {
 	// Verify signature
 	signature, err := DefaultEncoding.DecodeString(encodedSignature)
 	if err != nil {
-		return
+		return err
 	}
 	err = token.Signer.Verify(encodedPayload, signature)
 	if err != nil {
-		return
+		return err
 	}
 	// Decode header
 	token.Header = make(map[string]interface{})
 	err = decodeBase64JSON(encodedHeader, &token.Header)
 	if err != nil {
-		return
+		return err
 	}
 	// Decode claims
 	token.Claims = make(map[string]interface{})
 	err = decodeBase64JSON(encodedClaims, &token.Claims)
 	if err != nil {
-		return
+		return err
 	}
-	err = token.Validate()
-	return
+	return token.Validate()
 }
 
-func (token *Token) VerifySignature(tokenStr string) error {
-	token.checkSigner()
+func (token Token) VerifySignature(tokenStr string) error {
+	if err := token.validateSigner(); err != nil {
+		return err
+	}
 	signaturePos := strings.LastIndexByte(tokenStr, '.')
 	if signaturePos == -1 {
-		return errors.ErrMalformedToken
+		return ErrMalformedToken
 	}
 	encodedPayload := tokenStr[:signaturePos]
 	encodedSignature := tokenStr[signaturePos+1:]
@@ -189,13 +190,24 @@ func (token *Token) VerifySignature(tokenStr string) error {
 	return token.Signer.Verify(encodedPayload, signature)
 }
 
-func (token *Token) checkSigner() {
+func (token Token) validateSigner() error {
 	if token.Signer == nil && defaultSigner == nil {
-		panic("Neither token signer nor default signer has not been set")
+		return ErrMissingSigner
 	}
-	if token.Signer == nil {
-		token.Signer = defaultSigner
+	return nil
+}
+
+func (token Token) validateHeader() error {
+	if token.Header == nil {
+		return ErrMissingHeader
 	}
+	if _, ok := token.Header["typ"]; !ok {
+		return ErrMissingType
+	}
+	if _, ok := token.Header["alg"]; !ok {
+		return ErrMissingAlgorithm
+	}
+	return nil
 }
 
 func decodeBase64JSON(data string, v interface{}) error {

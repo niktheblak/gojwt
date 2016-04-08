@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/niktheblak/jwt/errors"
 	"github.com/niktheblak/jwt/sign"
 	"github.com/stretchr/testify/assert"
 )
@@ -44,7 +43,7 @@ func TestUnsupportedAlgorithm(t *testing.T) {
 		"alg": "XX666",
 		"typ": "JWT",
 	}
-	token := &Token{
+	token := Token{
 		Signer: testSigner,
 		Header: header,
 		Claims: testClaims,
@@ -52,7 +51,7 @@ func TestUnsupportedAlgorithm(t *testing.T) {
 	tokenStr, err := token.Encode()
 	assert.NoError(t, err)
 	err = token.Decode(tokenStr)
-	assert.EqualError(t, err, errors.ErrInvalidAlgorithm.Error())
+	assert.EqualError(t, err, ErrInvalidAlgorithm.Error())
 }
 
 func TestEncode(t *testing.T) {
@@ -116,5 +115,5 @@ func TestExpiredToken(t *testing.T) {
 	assert.NoError(t, err)
 	decoded := New()
 	err = decoded.Decode(encoded)
-	assert.EqualError(t, err, errors.ErrExpiredToken.Error())
+	assert.EqualError(t, err, ErrExpiredToken.Error())
 }
