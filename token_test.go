@@ -43,7 +43,7 @@ func TestUnsupportedAlgorithm(t *testing.T) {
 		"alg": "XX666",
 		"typ": "JWT",
 	}
-	token := Token{
+	token := &Token{
 		Signer: testSigner,
 		Header: header,
 		Claims: testClaims,
@@ -70,7 +70,7 @@ func TestDecode(t *testing.T) {
 
 func BenchmarkEncode(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		token := Token{
+		token := &Token{
 			Signer: testSigner,
 			Header: testHeader,
 			Claims: testClaims,
@@ -81,7 +81,7 @@ func BenchmarkEncode(b *testing.B) {
 
 func BenchmarkDecode(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		token := Token{
+		token := &Token{
 			Signer: testSigner,
 		}
 		token.Decode(testToken)

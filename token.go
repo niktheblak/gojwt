@@ -27,51 +27,51 @@ type Token struct {
 	Claims map[string]interface{}
 }
 
-func New() Token {
+func New() *Token {
 	if defaultSigner == nil {
 		panic("SetDefaultSigner has not been called")
 	}
-	return Token{
+	return &Token{
 		Signer: defaultSigner,
 		Header: createHeader(defaultSigner),
 		Claims: make(map[string]interface{}),
 	}
 }
 
-func NewWithClaims(claims map[string]interface{}) Token {
+func NewWithClaims(claims map[string]interface{}) *Token {
 	if defaultSigner == nil {
 		panic("SetDefaultSigner has not been called")
 	}
-	return Token{
+	return &Token{
 		Signer: defaultSigner,
 		Header: createHeader(defaultSigner),
 		Claims: claims,
 	}
 }
 
-func NewWithHeaderAndClaims(header, claims map[string]interface{}) Token {
+func NewWithHeaderAndClaims(header, claims map[string]interface{}) *Token {
 	if defaultSigner == nil {
 		panic("SetDefaultSigner has not been called")
 	}
 	if defaultSigner.Algorithm() != header["alg"] {
 		panic("Algorithm used with signer does not match the one given in header")
 	}
-	return Token{
+	return &Token{
 		Signer: defaultSigner,
 		Header: header,
 		Claims: claims,
 	}
 }
 
-func (token Token) Algorithm() string {
+func (token *Token) Algorithm() string {
 	return token.Header["alg"].(string)
 }
 
-func (token Token) Type() string {
+func (token *Token) Type() string {
 	return token.Header["typ"].(string)
 }
 
-func (token Token) Expired() bool {
+func (token *Token) Expired() bool {
 	exp, ok := token.Expiration()
 	if ok {
 		return exp.Before(time.Now())
@@ -79,7 +79,7 @@ func (token Token) Expired() bool {
 	return false
 }
 
-func (token Token) Expiration() (time.Time, bool) {
+func (token *Token) Expiration() (time.Time, bool) {
 	if ts, ok := token.Claims["exp"]; ok {
 		return toTimeStamp(ts)
 	}
@@ -90,7 +90,7 @@ func (token *Token) SetExpiration(exp time.Time) {
 	token.Claims["exp"] = exp.Unix()
 }
 
-func (token Token) Validate() error {
+func (token *Token) Validate() error {
 	if err := token.validateSigner(); err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func (token Token) Validate() error {
 	return nil
 }
 
-func (token Token) Encode() (string, error) {
+func (token *Token) Encode() (string, error) {
 	if err := token.validateSigner(); err != nil {
 		return "", err
 	}
@@ -173,7 +173,7 @@ func (token *Token) Decode(tokenStr string) error {
 	return token.Validate()
 }
 
-func (token Token) VerifySignature(tokenStr string) error {
+func (token *Token) VerifySignature(tokenStr string) error {
 	if err := token.validateSigner(); err != nil {
 		return err
 	}
@@ -190,14 +190,14 @@ func (token Token) VerifySignature(tokenStr string) error {
 	return token.Signer.Verify(encodedPayload, signature)
 }
 
-func (token Token) validateSigner() error {
+func (token *Token) validateSigner() error {
 	if token.Signer == nil && defaultSigner == nil {
 		return ErrMissingSigner
 	}
 	return nil
 }
 
-func (token Token) validateHeader() error {
+func (token *Token) validateHeader() error {
 	if token.Header == nil {
 		return ErrMissingHeader
 	}
