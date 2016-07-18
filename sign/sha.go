@@ -3,6 +3,7 @@ package sign
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"crypto/sha512"
 	"hash"
 )
 
@@ -16,6 +17,14 @@ func HS256(secret []byte) Signer {
 	return shaSigner{
 		algo:   "HS256",
 		hash:   sha256.New,
+		secret: secret,
+	}
+}
+
+func ES256(secret []byte) Signer {
+	return shaSigner{
+		algo:   "ES256",
+		hash:   sha512.New512_256,
 		secret: secret,
 	}
 }

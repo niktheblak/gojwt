@@ -6,61 +6,12 @@ import (
 	"encoding/json"
 	"strings"
 	"time"
-
-	"github.com/niktheblak/jwt/sign"
 )
-
-const DefaultType = "JWT"
-
-var (
-	DefaultEncoding = base64.RawURLEncoding
-	defaultSigner   sign.Signer
-)
-
-func SetDefaultSigner(sig sign.Signer) {
-	defaultSigner = sig
-}
 
 type Token struct {
-	Signer sign.Signer
-	Header map[string]interface{}
-	Claims map[string]interface{}
-}
-
-func New() *Token {
-	if defaultSigner == nil {
-		panic("SetDefaultSigner has not been called")
-	}
-	return &Token{
-		Signer: defaultSigner,
-		Header: createHeader(defaultSigner),
-		Claims: make(map[string]interface{}),
-	}
-}
-
-func NewWithClaims(claims map[string]interface{}) *Token {
-	if defaultSigner == nil {
-		panic("SetDefaultSigner has not been called")
-	}
-	return &Token{
-		Signer: defaultSigner,
-		Header: createHeader(defaultSigner),
-		Claims: claims,
-	}
-}
-
-func NewWithHeaderAndClaims(header, claims map[string]interface{}) *Token {
-	if defaultSigner == nil {
-		panic("SetDefaultSigner has not been called")
-	}
-	if defaultSigner.Algorithm() != header["alg"] {
-		panic("Algorithm used with signer does not match the one given in header")
-	}
-	return &Token{
-		Signer: defaultSigner,
-		Header: header,
-		Claims: claims,
-	}
+	Context Context
+	Header  map[string]interface{}
+	Claims  map[string]interface{}
 }
 
 func (token *Token) Algorithm() string {
@@ -91,13 +42,10 @@ func (token *Token) SetExpiration(exp time.Time) {
 }
 
 func (token *Token) Validate() error {
-	if err := token.validateSigner(); err != nil {
-		return err
-	}
-	if token.Algorithm() != token.Signer.Algorithm() {
+	if token.Algorithm() != token.Context.Signer().Algorithm() {
 		return ErrInvalidAlgorithm
 	}
-	if token.Type() != DefaultType {
+	if token.Type() != token.Context.Type() {
 		return ErrInvalidType
 	}
 	if token.Expired() {
@@ -107,14 +55,11 @@ func (token *Token) Validate() error {
 }
 
 func (token *Token) Encode() (string, error) {
-	if err := token.validateSigner(); err != nil {
-		return "", err
-	}
 	if err := token.validateHeader(); err != nil {
 		return "", err
 	}
 	var buf bytes.Buffer
-	encoder := base64.NewEncoder(DefaultEncoding, &buf)
+	encoder := base64.NewEncoder(token.Context.Encoding(), &buf)
 	headerJSON, err := json.Marshal(token.Header)
 	if err != nil {
 		return "", err
@@ -126,7 +71,7 @@ func (token *Token) Encode() (string, error) {
 		return "", err
 	}
 	encoder.Write(claimsJSON)
-	signature := token.Signer.Sign(buf.String())
+	signature := token.Context.Signer().Sign(buf.String())
 	buf.WriteByte('.')
 	encoder.Write(signature)
 	encoder.Close()
@@ -134,9 +79,6 @@ func (token *Token) Encode() (string, error) {
 }
 
 func (token *Token) Decode(tokenStr string) error {
-	if err := token.validateSigner(); err != nil {
-		return err
-	}
 	claimsPos := strings.IndexByte(tokenStr, '.')
 	if claimsPos == -1 {
 		return ErrMalformedToken
@@ -150,23 +92,23 @@ func (token *Token) Decode(tokenStr string) error {
 	encodedClaims := tokenStr[claimsPos+1 : signaturePos]
 	encodedSignature := tokenStr[signaturePos+1:]
 	// Verify signature
-	signature, err := DefaultEncoding.DecodeString(encodedSignature)
+	signature, err := token.Context.Encoding().DecodeString(encodedSignature)
 	if err != nil {
 		return err
 	}
-	err = token.Signer.Verify(encodedPayload, signature)
+	err = token.Context.Signer().Verify(encodedPayload, signature)
 	if err != nil {
 		return err
 	}
 	// Decode header
 	token.Header = make(map[string]interface{})
-	err = decodeBase64JSON(encodedHeader, &token.Header)
+	err = token.decodeBase64JSON(encodedHeader, &token.Header)
 	if err != nil {
 		return err
 	}
 	// Decode claims
 	token.Claims = make(map[string]interface{})
-	err = decodeBase64JSON(encodedClaims, &token.Claims)
+	err = token.decodeBase64JSON(encodedClaims, &token.Claims)
 	if err != nil {
 		return err
 	}
@@ -174,27 +116,17 @@ func (token *Token) Decode(tokenStr string) error {
 }
 
 func (token *Token) VerifySignature(tokenStr string) error {
-	if err := token.validateSigner(); err != nil {
-		return err
-	}
 	signaturePos := strings.LastIndexByte(tokenStr, '.')
 	if signaturePos == -1 {
 		return ErrMalformedToken
 	}
 	encodedPayload := tokenStr[:signaturePos]
 	encodedSignature := tokenStr[signaturePos+1:]
-	signature, err := DefaultEncoding.DecodeString(encodedSignature)
+	signature, err := token.Context.Encoding().DecodeString(encodedSignature)
 	if err != nil {
 		return err
 	}
-	return token.Signer.Verify(encodedPayload, signature)
-}
-
-func (token *Token) validateSigner() error {
-	if token.Signer == nil && defaultSigner == nil {
-		return ErrMissingSigner
-	}
-	return nil
+	return token.Context.Signer().Verify(encodedPayload, signature)
 }
 
 func (token *Token) validateHeader() error {
@@ -210,8 +142,8 @@ func (token *Token) validateHeader() error {
 	return nil
 }
 
-func decodeBase64JSON(data string, v interface{}) error {
-	decoded, err := DefaultEncoding.DecodeString(data)
+func (token *Token) decodeBase64JSON(data string, v interface{}) error {
+	decoded, err := token.Context.Encoding().DecodeString(data)
 	if err != nil {
 		return err
 	}
@@ -220,13 +152,6 @@ func decodeBase64JSON(data string, v interface{}) error {
 		return err
 	}
 	return nil
-}
-
-func createHeader(sig sign.Signer) map[string]interface{} {
-	header := make(map[string]interface{})
-	header["typ"] = DefaultType
-	header["alg"] = sig.Algorithm()
-	return header
 }
 
 func toTimeStamp(s interface{}) (ts time.Time, ok bool) {
