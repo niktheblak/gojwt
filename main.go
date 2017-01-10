@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/niktheblak/jwt/token"
+	"github.com/niktheblak/gojwt/token"
 )
 
 func main() {

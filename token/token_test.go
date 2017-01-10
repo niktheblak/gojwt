@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/niktheblak/jwt/sign"
+	"github.com/niktheblak/gojwt/sign"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

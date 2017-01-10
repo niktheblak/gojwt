@@ -1,6 +1,6 @@
 package token
 
-import "github.com/niktheblak/jwt/sign"
+import "github.com/niktheblak/gojwt/sign"
 
 type Context interface {
 	Type() string
