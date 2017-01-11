@@ -194,13 +194,17 @@ func (token *Token) Decode(tokenStr string) error {
 		return err
 	}
 	// Decode header
-	token.Header = make(map[string]interface{})
+	if token.Header == nil {
+		token.Header = make(map[string]interface{})
+	}
 	err = decodeBase64JSON(encodedHeader, &token.Header)
 	if err != nil {
 		return err
 	}
 	// Decode payload
-	token.Payload = make(map[string]interface{})
+	if token.Payload == nil {
+		token.Payload = make(map[string]interface{})
+	}
 	err = decodeBase64JSON(encodedPayload, &token.Payload)
 	if err != nil {
 		return err
