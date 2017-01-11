@@ -17,11 +17,11 @@ type Token struct {
 }
 
 func (token *Token) Algorithm() string {
-	return token.Header["alg"].(string)
+	return optString(token.Header, "alg")
 }
 
 func (token *Token) Type() string {
-	return token.Header["typ"].(string)
+	return optString(token.Header, "typ")
 }
 
 func (token *Token) Expired() bool {
@@ -33,22 +33,46 @@ func (token *Token) Expired() bool {
 }
 
 func (token *Token) Expiration() (time.Time, bool) {
-	ts, ok := token.Payload["exp"]
-	if !ok {
-		return time.Time{}, false
-	}
-	tsInt, ok := ts.(int64)
-	if !ok {
-		return time.Time{}, false
-	}
-	return time.Unix(tsInt, 0), true
+	return optTimestamp(token.Payload, "exp")
 }
 
 func (token *Token) SetExpiration(exp time.Time) {
 	token.Payload["exp"] = exp.Unix()
 }
 
-func (token *Token) AddClaim(key string, value interface{}) {
+func (token *Token) Issuer() string {
+	return optString(token.Payload, "iss")
+}
+
+func (token *Token) SetIssuer(issuer string) {
+	token.Payload["iss"] = issuer
+}
+
+func (token *Token) Subject() string {
+	return optString(token.Payload, "sub")
+}
+
+func (token *Token) SetSubject(subject string) {
+	token.Payload["sub"] = subject
+}
+
+func (token *Token) Audience() string {
+	return optString(token.Payload, "aud")
+}
+
+func (token *Token) SetAudience(audience string) {
+	token.Payload["aud"] = audience
+}
+
+func (token *Token) IssuedAt() (time.Time, bool) {
+	return optTimestamp(token.Payload, "iat")
+}
+
+func (token *Token) SetIssuedAt(iat time.Time) {
+	token.Payload["iat"] = iat.Unix()
+}
+
+func (token *Token) SetClaim(key string, value interface{}) {
 	token.Payload[key] = value
 }
 
@@ -148,21 +172,32 @@ func (token *Token) Decode(tokenStr string) error {
 	if err != nil {
 		return err
 	}
-	if _, hasExp := token.Payload["exp"]; hasExp {
-		// json.Unmarshal decodes numbers to float64 if the target type is map[string]interface{}.
-		// This is not good for integer timestamps so decode the timestamp again as int64.
-		exp := struct {
-			Expiration int64 `json:"exp"`
-		}{}
-		err = decodeBase64JSON(encodedPayload, &exp)
-		if err != nil {
-			return err
-		}
-		if exp.Expiration != 0 {
-			token.Payload["exp"] = exp.Expiration
-		}
+	_, hasExp := token.Payload["exp"]
+	_, hasIss := token.Payload["iat"]
+	if hasExp || hasIss {
+		token.unmarshalTimestamps(encodedPayload)
 	}
 	return token.Validate()
+}
+
+func (token *Token) unmarshalTimestamps(encodedPayload string) error {
+	// json.Unmarshal decodes numbers to float64 if the target type is map[string]interface{}.
+	// This is not good for integer timestamps so decode the timestamp again as int64.
+	ts := struct {
+		Expiration int64 `json:"exp"`
+		IssuedAt   int64 `json:"iat"`
+	}{}
+	err := decodeBase64JSON(encodedPayload, &ts)
+	if err != nil {
+		return err
+	}
+	if ts.Expiration != 0 {
+		token.Payload["exp"] = ts.Expiration
+	}
+	if ts.IssuedAt != 0 {
+		token.Payload["iat"] = ts.IssuedAt
+	}
+	return nil
 }
 
 func (token *Token) String() string {
@@ -184,4 +219,28 @@ func (token *Token) validateHeader() error {
 		return ErrMissingAlgorithm
 	}
 	return nil
+}
+
+func optString(m map[string]interface{}, key string) string {
+	rawValue, ok := m[key]
+	if !ok {
+		return ""
+	}
+	value, ok := rawValue.(string)
+	if !ok {
+		return ""
+	}
+	return value
+}
+
+func optTimestamp(m map[string]interface{}, key string) (time.Time, bool) {
+	rawTS, ok := m[key]
+	if !ok {
+		return time.Time{}, false
+	}
+	ts, ok := rawTS.(int64)
+	if !ok {
+		return time.Time{}, false
+	}
+	return time.Unix(ts, 0), true
 }
