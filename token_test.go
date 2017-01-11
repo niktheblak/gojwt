@@ -1,4 +1,4 @@
-package token
+package jwt
 
 import (
 	"testing"
@@ -21,6 +21,8 @@ var (
 		"sub":   "1234567890",
 		"name":  "John Doe",
 		"admin": true,
+		"iat":   time.Now().Unix(),
+		"exp":   time.Now().Add(time.Hour).Unix(),
 	}
 )
 
@@ -57,7 +59,6 @@ func BenchmarkEncode(b *testing.B) {
 		Header:  testHeader,
 		Payload: testClaims,
 	}
-	token.SetExpiration(time.Now().Add(1*time.Hour))
 	for i := 0; i < b.N; i++ {
 		_, err := token.Encode()
 		if err != nil {
@@ -70,7 +71,6 @@ func BenchmarkDecode(b *testing.B) {
 	token := testContext.NewToken()
 	token.Header = testHeader
 	token.Payload = testClaims
-	token.SetExpiration(time.Now().Add(1*time.Hour))
 	encoded, err := token.Encode()
 	if err != nil {
 		b.FailNow()
@@ -106,8 +106,7 @@ func TestSignature(t *testing.T) {
 
 func TestExpiredToken(t *testing.T) {
 	token := testContext.NewToken()
-	ts := time.Now().Add(time.Hour * -1)
-	token.SetExpiration(ts)
+	token.SetExpiration(time.Now().Add(time.Hour * -1))
 	encoded, err := token.Encode()
 	require.NoError(t, err)
 	_, err = testContext.Decode(encoded)
