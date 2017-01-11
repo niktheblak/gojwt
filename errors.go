@@ -6,7 +6,7 @@ import (
 
 // Errors related to JSON web tokens
 var (
-	ErrExpiredToken     = errors.New("Token has expired")
+	ErrExpiredToken     = errors.New("Token is not valid at this time")
 	ErrInvalidHeader    = errors.New("Token has invalid header")
 	ErrInvalidType      = errors.New("Invalid token type")
 	ErrInvalidAlgorithm = errors.New("Invalid or unsupported signing algorithm")

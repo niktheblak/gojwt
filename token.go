@@ -32,12 +32,24 @@ func (token *Token) Expired() bool {
 	return false
 }
 
+func (token *Token) UsedBeforeValidity() bool {
+	nbf, ok := token.NotBefore()
+	if ok {
+		return nbf.After(time.Now())
+	}
+	return false
+}
+
+func (token *Token) Valid() bool {
+	return !token.Expired() && !token.UsedBeforeValidity()
+}
+
 func (token *Token) Expiration() (time.Time, bool) {
 	return optTimestamp(token.Payload, "exp")
 }
 
-func (token *Token) SetExpiration(exp time.Time) {
-	token.Payload["exp"] = exp.Unix()
+func (token *Token) SetExpiration(ts time.Time) {
+	token.Payload["exp"] = ts.Unix()
 }
 
 func (token *Token) Issuer() string {
@@ -68,8 +80,16 @@ func (token *Token) IssuedAt() (time.Time, bool) {
 	return optTimestamp(token.Payload, "iat")
 }
 
-func (token *Token) SetIssuedAt(iat time.Time) {
-	token.Payload["iat"] = iat.Unix()
+func (token *Token) SetIssuedAt(ts time.Time) {
+	token.Payload["iat"] = ts.Unix()
+}
+
+func (token *Token) NotBefore() (time.Time, bool) {
+	return optTimestamp(token.Payload, "nbf")
+}
+
+func (token *Token) SetNotBefore(ts time.Time) {
+	token.Payload["nbf"] = ts.Unix()
 }
 
 func (token *Token) SetClaim(key string, value interface{}) {
@@ -91,7 +111,7 @@ func (token *Token) Validate() error {
 	if typ != token.Context.Type() {
 		return ErrInvalidType
 	}
-	if token.Expired() {
+	if !token.Valid() {
 		return ErrExpiredToken
 	}
 	return nil
@@ -172,11 +192,7 @@ func (token *Token) Decode(tokenStr string) error {
 	if err != nil {
 		return err
 	}
-	_, hasExp := token.Payload["exp"]
-	_, hasIss := token.Payload["iat"]
-	if hasExp || hasIss {
-		token.unmarshalTimestamps(encodedPayload)
-	}
+	token.unmarshalTimestamps(encodedPayload)
 	return token.Validate()
 }
 
@@ -185,6 +201,7 @@ func (token *Token) unmarshalTimestamps(encodedPayload string) error {
 	// This is not good for integer timestamps so decode the timestamp again as int64.
 	ts := struct {
 		Expiration int64 `json:"exp"`
+		NotBefore  int64 `json:"nbf"`
 		IssuedAt   int64 `json:"iat"`
 	}{}
 	err := decodeBase64JSON(encodedPayload, &ts)
@@ -193,6 +210,9 @@ func (token *Token) unmarshalTimestamps(encodedPayload string) error {
 	}
 	if ts.Expiration != 0 {
 		token.Payload["exp"] = ts.Expiration
+	}
+	if ts.NotBefore != 0 {
+		token.Payload["nbf"] = ts.NotBefore
 	}
 	if ts.IssuedAt != 0 {
 		token.Payload["iat"] = ts.IssuedAt

@@ -38,8 +38,10 @@ func TestCustomTokenHeader(t *testing.T) {
 }
 
 func TestUnsupportedAlgorithm(t *testing.T) {
+	// Tests for for the attack described in
+	// https://auth0.com/blog/critical-vulnerabilities-in-json-web-token-libraries/
 	header := map[string]interface{}{
-		"alg": "XX666",
+		"alg": "none",
 		"typ": "JWT",
 	}
 	token := &Token{
@@ -104,9 +106,25 @@ func TestSignature(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestExpiredToken(t *testing.T) {
+func TestExpiration(t *testing.T) {
 	token := testContext.NewToken()
-	token.SetExpiration(time.Now().Add(time.Hour * -1))
+	token.SetExpiration(time.Now().Add(-time.Hour))
+	encoded, err := token.Encode()
+	require.NoError(t, err)
+	_, err = testContext.Decode(encoded)
+	assert.EqualError(t, err, ErrExpiredToken.Error())
+
+	token.SetExpiration(time.Now().Add(2 * time.Hour))
+	token.SetNotBefore(time.Now().Add(time.Hour))
+	encoded, err = token.Encode()
+	require.NoError(t, err)
+	_, err = testContext.Decode(encoded)
+	assert.EqualError(t, err, ErrExpiredToken.Error())
+}
+
+func TestNotBefore(t *testing.T) {
+	token := testContext.NewToken()
+	token.SetNotBefore(time.Now().Add(time.Hour))
 	encoded, err := token.Encode()
 	require.NoError(t, err)
 	_, err = testContext.Decode(encoded)
