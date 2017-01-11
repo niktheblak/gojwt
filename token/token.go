@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-var encoding = base64.RawURLEncoding
+var Encoding = base64.RawURLEncoding
 
 type Token struct {
 	Context Context                `json:"-"`
@@ -131,7 +131,7 @@ func (token *Token) VerifySignature(tokenStr string) error {
 	}
 	encodedPayload := tokenStr[:signaturePos]
 	encodedSignature := tokenStr[signaturePos+1:]
-	signature, err := encoding.DecodeString(encodedSignature)
+	signature, err := Encoding.DecodeString(encodedSignature)
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func (token *Token) Decode(tokenStr string) error {
 	encodedPayload := tokenStr[claimsPos+1 : signaturePos]
 	encodedSignature := tokenStr[signaturePos+1:]
 	// Verify signature
-	signature, err := encoding.DecodeString(encodedSignature)
+	signature, err := Encoding.DecodeString(encodedSignature)
 	if err != nil {
 		return err
 	}

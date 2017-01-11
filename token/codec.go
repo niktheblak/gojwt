@@ -12,13 +12,13 @@ func decodeBase64JSON(data string, v interface{}) error {
 		return nil
 	}
 	buf := bytes.NewBufferString(data)
-	base64Dec := base64.NewDecoder(encoding, buf)
+	base64Dec := base64.NewDecoder(Encoding, buf)
 	jsonDec := json.NewDecoder(base64Dec)
 	return jsonDec.Decode(v)
 }
 
 func encodeBase64JSON(v interface{}, w io.Writer) error {
-	base64Enc := base64.NewEncoder(encoding, w)
+	base64Enc := base64.NewEncoder(Encoding, w)
 	jsonEnc := json.NewEncoder(base64Enc)
 	err := jsonEnc.Encode(v)
 	if err != nil {
@@ -28,7 +28,7 @@ func encodeBase64JSON(v interface{}, w io.Writer) error {
 }
 
 func encodeBase64(data []byte, w io.Writer) error {
-	base64Enc := base64.NewEncoder(encoding, w)
+	base64Enc := base64.NewEncoder(Encoding, w)
 	_, err := base64Enc.Write(data)
 	if err != nil {
 		return err
