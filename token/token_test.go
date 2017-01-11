@@ -57,7 +57,7 @@ func BenchmarkEncode(b *testing.B) {
 		Header:  testHeader,
 		Payload: testClaims,
 	}
-	token.AddClaim("exp", time.Now().Add(1*time.Hour).Unix())
+	token.SetExpiration(time.Now().Add(1*time.Hour))
 	for i := 0; i < b.N; i++ {
 		_, err := token.Encode()
 		if err != nil {
@@ -70,7 +70,7 @@ func BenchmarkDecode(b *testing.B) {
 	token := testContext.NewToken()
 	token.Header = testHeader
 	token.Payload = testClaims
-	token.AddClaim("exp", time.Now().Add(1*time.Hour).Unix())
+	token.SetExpiration(time.Now().Add(1*time.Hour))
 	encoded, err := token.Encode()
 	if err != nil {
 		b.FailNow()
