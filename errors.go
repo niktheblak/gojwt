@@ -15,4 +15,5 @@ var (
 	ErrMissingHeader    = errors.New("Token header has not been set")
 	ErrMissingType      = errors.New("Token type has not been set")
 	ErrMissingAlgorithm = errors.New("Token signing algorithm has not been set")
+	ErrContextNotSet    = errors.New("Token context has not been set")
 )

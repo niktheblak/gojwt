@@ -113,13 +113,6 @@ func TestExpiration(t *testing.T) {
 	require.NoError(t, err)
 	_, err = testContext.Decode(encoded)
 	assert.EqualError(t, err, ErrExpiredToken.Error())
-
-	token.SetExpiration(time.Now().Add(2 * time.Hour))
-	token.SetNotBefore(time.Now().Add(time.Hour))
-	encoded, err = token.Encode()
-	require.NoError(t, err)
-	_, err = testContext.Decode(encoded)
-	assert.EqualError(t, err, ErrExpiredToken.Error())
 }
 
 func TestNotBefore(t *testing.T) {
@@ -129,4 +122,20 @@ func TestNotBefore(t *testing.T) {
 	require.NoError(t, err)
 	_, err = testContext.Decode(encoded)
 	assert.EqualError(t, err, ErrExpiredToken.Error())
+}
+
+func TestTokenWithoutContext(t *testing.T) {
+	token := new(Token)
+	t.Run("ValidateWithoutContext", func(t *testing.T) {
+		err := token.Validate()
+		assert.EqualError(t, err, ErrContextNotSet.Error())
+	})
+	t.Run("EncodeWithoutContext", func(t *testing.T) {
+		_, err := token.Encode()
+		assert.EqualError(t, err, ErrContextNotSet.Error())
+	})
+	t.Run("DecodeWithoutContext", func(t *testing.T) {
+		err := token.Decode("notvalidtoken")
+		assert.EqualError(t, err, ErrContextNotSet.Error())
+	})
 }

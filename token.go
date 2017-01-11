@@ -97,6 +97,9 @@ func (token *Token) SetClaim(key string, value interface{}) {
 }
 
 func (token *Token) Validate() error {
+	if token.Context == nil {
+		return ErrContextNotSet
+	}
 	algo, ok := token.Header["alg"]
 	if !ok {
 		return ErrMalformedToken
@@ -118,6 +121,10 @@ func (token *Token) Validate() error {
 }
 
 func (token *Token) Encode() (tokenString string, err error) {
+	if token.Context == nil {
+		err = ErrContextNotSet
+		return
+	}
 	if err = token.validateHeader(); err != nil {
 		return
 	}
@@ -145,6 +152,9 @@ func (token *Token) Encode() (tokenString string, err error) {
 }
 
 func (token *Token) VerifySignature(tokenStr string) error {
+	if token.Context == nil {
+		return ErrContextNotSet
+	}
 	signaturePos := strings.LastIndexByte(tokenStr, '.')
 	if signaturePos == -1 {
 		return ErrMalformedToken
@@ -159,6 +169,9 @@ func (token *Token) VerifySignature(tokenStr string) error {
 }
 
 func (token *Token) Decode(tokenStr string) error {
+	if token.Context == nil {
+		return ErrContextNotSet
+	}
 	claimsPos := strings.IndexByte(tokenStr, '.')
 	if claimsPos == -1 {
 		return ErrMalformedToken
