@@ -24,34 +24,6 @@ func (token *Token) Type() string {
 	return optString(token.Header, "typ")
 }
 
-func (token *Token) Expired() bool {
-	exp, ok := token.Expiration()
-	if ok {
-		return exp.Before(time.Now())
-	}
-	return false
-}
-
-func (token *Token) UsedBeforeValidity() bool {
-	nbf, ok := token.NotBefore()
-	if ok {
-		return nbf.After(time.Now())
-	}
-	return false
-}
-
-func (token *Token) Valid() bool {
-	return !token.Expired() && !token.UsedBeforeValidity()
-}
-
-func (token *Token) Expiration() (time.Time, bool) {
-	return optTimestamp(token.Payload, "exp")
-}
-
-func (token *Token) SetExpiration(ts time.Time) {
-	token.Payload["exp"] = ts.Unix()
-}
-
 func (token *Token) Issuer() string {
 	return optString(token.Payload, "iss")
 }
@@ -76,6 +48,14 @@ func (token *Token) SetAudience(audience string) {
 	token.Payload["aud"] = audience
 }
 
+func (token *Token) Expiration() (time.Time, bool) {
+	return optTimestamp(token.Payload, "exp")
+}
+
+func (token *Token) SetExpiration(ts time.Time) {
+	token.Payload["exp"] = ts.Unix()
+}
+
 func (token *Token) IssuedAt() (time.Time, bool) {
 	return optTimestamp(token.Payload, "iat")
 }
@@ -96,26 +76,49 @@ func (token *Token) SetClaim(key string, value interface{}) {
 	token.Payload[key] = value
 }
 
+func (token *Token) Expired() bool {
+	exp, ok := token.Expiration()
+	if ok {
+		return time.Now().After(exp)
+	}
+	return false
+}
+
+func (token *Token) UsedBeforeValidity() bool {
+	nbf, ok := token.NotBefore()
+	if ok {
+		return time.Now().Before(nbf)
+	}
+	return false
+}
+
+func (token *Token) Valid() bool {
+	return !token.Expired() && !token.UsedBeforeValidity()
+}
+
 func (token *Token) Validate() error {
 	if token.Context == nil {
 		return ErrContextNotSet
 	}
 	algo, ok := token.Header["alg"]
 	if !ok {
-		return ErrMalformedToken
+		return ErrInvalidHeader
 	}
 	if algo != token.Context.Signer().Algorithm() {
 		return ErrInvalidAlgorithm
 	}
 	typ, ok := token.Header["typ"]
 	if !ok {
-		return ErrMalformedToken
+		return ErrInvalidHeader
 	}
 	if typ != token.Context.Type() {
 		return ErrInvalidType
 	}
-	if !token.Valid() {
+	if token.Expired() {
 		return ErrExpiredToken
+	}
+	if token.UsedBeforeValidity() {
+		return ErrUsedBeforeValidity
 	}
 	return nil
 }

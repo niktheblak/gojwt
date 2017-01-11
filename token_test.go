@@ -121,7 +121,7 @@ func TestNotBefore(t *testing.T) {
 	encoded, err := token.Encode()
 	require.NoError(t, err)
 	_, err = testContext.Decode(encoded)
-	assert.EqualError(t, err, ErrExpiredToken.Error())
+	assert.EqualError(t, err, ErrUsedBeforeValidity.Error())
 }
 
 func TestTokenWithoutContext(t *testing.T) {
