@@ -92,24 +92,42 @@ func (token *Token) SetClaim(key string, value interface{}) {
 	token.Payload[key] = value
 }
 
-func (token *Token) Expired() bool {
-	exp, ok := token.Expiration()
-	if ok {
-		return time.Now().After(exp)
-	}
-	return false
-}
-
-func (token *Token) UsedBeforeValidity() bool {
-	nbf, ok := token.NotBefore()
-	if ok {
-		return time.Now().Before(nbf)
-	}
-	return false
-}
-
 func (token *Token) Valid() bool {
-	return !token.Expired() && !token.UsedBeforeValidity()
+	exp, hasExpiration := token.Expiration()
+	if hasExpiration {
+		// Token has expired
+		if time.Now().After(exp) {
+			return false
+		}
+	}
+	nbf, hasNotBefore := token.NotBefore()
+	if hasNotBefore {
+		// Token used before validity begins
+		if time.Now().Before(nbf) {
+			return false
+		}
+	}
+	iat, hasIssuedAt := token.IssuedAt()
+	if hasIssuedAt {
+		if time.Now().Before(iat) {
+			// Token was issued in the future
+			return false
+		}
+	}
+	if hasExpiration && hasIssuedAt {
+		if exp.Before(iat) {
+			// Token expired before it was issued
+			return false
+		}
+	}
+	if hasExpiration && hasNotBefore {
+		// Token expires before validity begins
+		if exp.Before(nbf) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (token *Token) Validate() error {
@@ -130,44 +148,23 @@ func (token *Token) Validate() error {
 	if typ != token.Context.Type() {
 		return ErrInvalidType
 	}
-	if token.Expired() {
-		return ErrExpiredToken
-	}
-	if token.UsedBeforeValidity() {
-		return ErrUsedBeforeValidity
+	if !token.Valid() {
+		return ErrInvalidToken
 	}
 	return nil
 }
 
-func (token *Token) Encode() (tokenString string, err error) {
+func (token *Token) Encode() (string, error) {
 	if token.Context == nil {
-		err = ErrContextNotSet
-		return
+		return "", ErrContextNotSet
 	}
-	if err = token.validateHeader(); err != nil {
-		return
+	if token.Header == nil {
+		return "", ErrInvalidHeader
 	}
-	buf := new(bytes.Buffer)
-	if err = encodeBase64JSON(token.Header, buf); err != nil {
-		return
+	if err := token.Validate(); err != nil {
+		return "", err
 	}
-	err = buf.WriteByte('.')
-	if err != nil {
-		return
-	}
-	if err = encodeBase64JSON(token.Payload, buf); err != nil {
-		return
-	}
-	signature := token.Context.Signer().Sign(buf.String())
-	err = buf.WriteByte('.')
-	if err != nil {
-		return
-	}
-	if err = encodeBase64(signature, buf); err != nil {
-		return
-	}
-	tokenString = buf.String()
-	return
+	return token.encode()
 }
 
 func (token *Token) VerifySignature(tokenStr string) error {
@@ -264,17 +261,28 @@ func (token *Token) String() string {
 	return buf.String()
 }
 
-func (token *Token) validateHeader() error {
-	if token.Header == nil {
-		return ErrMissingHeader
+func (token *Token) encode() (tokenString string, err error) {
+	buf := new(bytes.Buffer)
+	if err = encodeBase64JSON(token.Header, buf); err != nil {
+		return
 	}
-	if _, ok := token.Header["typ"]; !ok {
-		return ErrMissingType
+	err = buf.WriteByte('.')
+	if err != nil {
+		return
 	}
-	if _, ok := token.Header["alg"]; !ok {
-		return ErrMissingAlgorithm
+	if err = encodeBase64JSON(token.Payload, buf); err != nil {
+		return
 	}
-	return nil
+	signature := token.Context.Signer().Sign(buf.String())
+	err = buf.WriteByte('.')
+	if err != nil {
+		return
+	}
+	if err = encodeBase64(signature, buf); err != nil {
+		return
+	}
+	tokenString = buf.String()
+	return
 }
 
 func optString(m map[string]interface{}, key string) string {

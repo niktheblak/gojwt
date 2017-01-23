@@ -65,7 +65,7 @@ func TestUnsupportedAlgorithm(t *testing.T) {
 		Header:  header,
 		Payload: testClaims,
 	}
-	tokenStr, err := token.Encode()
+	tokenStr, err := token.encode()
 	require.NoError(t, err)
 	_, err = testContext.Decode(tokenStr)
 	assert.EqualError(t, err, ErrInvalidAlgorithm.Error())
@@ -125,19 +125,19 @@ func TestSignature(t *testing.T) {
 func TestExpiration(t *testing.T) {
 	token := testContext.NewToken()
 	token.SetExpiration(time.Now().Add(-time.Hour))
-	encoded, err := token.Encode()
+	encoded, err := token.encode()
 	require.NoError(t, err)
 	_, err = testContext.Decode(encoded)
-	assert.EqualError(t, err, ErrExpiredToken.Error())
+	assert.EqualError(t, err, ErrInvalidToken.Error())
 }
 
 func TestNotBefore(t *testing.T) {
 	token := testContext.NewToken()
 	token.SetNotBefore(time.Now().Add(time.Hour))
-	encoded, err := token.Encode()
+	encoded, err := token.encode()
 	require.NoError(t, err)
 	_, err = testContext.Decode(encoded)
-	assert.EqualError(t, err, ErrUsedBeforeValidity.Error())
+	assert.EqualError(t, err, ErrInvalidToken.Error())
 }
 
 func TestTokenWithoutContext(t *testing.T) {
