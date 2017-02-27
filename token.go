@@ -20,11 +20,14 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"math"
 	"strings"
 	"time"
 )
 
 var Encoding = base64.RawURLEncoding
+
+var timestampFields = []string{"exp", "nbf", "iat"}
 
 type Token struct {
 	Context Context                `json:"-"`
@@ -134,21 +137,26 @@ func (token *Token) Validate() error {
 	if token.Context == nil {
 		return ErrContextNotSet
 	}
-	algo, ok := token.Header["alg"]
+	alg, ok := token.Header["alg"]
 	if !ok {
+		// Token must have the algorithm header set
 		return ErrInvalidHeader
 	}
-	if algo != token.Context.Signer().Algorithm() {
+	if alg != token.Context.Signer().Algorithm() {
+		// Token signing algorithm must match the one used in token context
 		return ErrInvalidAlgorithm
 	}
 	typ, ok := token.Header["typ"]
 	if !ok {
+		// Token must have the type header set
 		return ErrInvalidHeader
 	}
 	if typ != token.Context.Type() {
+		// Token type must match the one used in token context
 		return ErrInvalidType
 	}
 	if !token.Valid() {
+		// Token must be within it's defined validity period
 		return ErrInvalidToken
 	}
 	return nil
@@ -205,52 +213,27 @@ func (token *Token) Decode(tokenStr string) error {
 	if err != nil {
 		return err
 	}
-	err = token.Context.Signer().Verify(encodedContent, signature)
-	if err != nil {
+	if err := token.Context.Signer().Verify(encodedContent, signature); err != nil {
 		return err
 	}
 	// Decode header
 	if token.Header == nil {
 		token.Header = make(map[string]interface{})
 	}
-	err = decodeBase64JSON(encodedHeader, &token.Header)
-	if err != nil {
+	if err := decodeBase64JSON(encodedHeader, &token.Header); err != nil {
 		return err
 	}
 	// Decode payload
 	if token.Payload == nil {
 		token.Payload = make(map[string]interface{})
 	}
-	err = decodeBase64JSON(encodedPayload, &token.Payload)
-	if err != nil {
+	if err := decodeBase64JSON(encodedPayload, &token.Payload); err != nil {
 		return err
 	}
-	token.unmarshalTimestamps(encodedPayload)
+	if err := token.convertTimestamps(); err != nil {
+		return err
+	}
 	return token.Validate()
-}
-
-func (token *Token) unmarshalTimestamps(encodedPayload string) error {
-	// json.Unmarshal decodes numbers to float64 if the target type is map[string]interface{}.
-	// This is not good for integer timestamps so decode the timestamp again as int64.
-	ts := struct {
-		Expiration int64 `json:"exp"`
-		NotBefore  int64 `json:"nbf"`
-		IssuedAt   int64 `json:"iat"`
-	}{}
-	err := decodeBase64JSON(encodedPayload, &ts)
-	if err != nil {
-		return err
-	}
-	if ts.Expiration != 0 {
-		token.Payload["exp"] = ts.Expiration
-	}
-	if ts.NotBefore != 0 {
-		token.Payload["nbf"] = ts.NotBefore
-	}
-	if ts.IssuedAt != 0 {
-		token.Payload["iat"] = ts.IssuedAt
-	}
-	return nil
 }
 
 func (token *Token) String() string {
@@ -283,6 +266,26 @@ func (token *Token) encode() (tokenString string, err error) {
 	}
 	tokenString = buf.String()
 	return
+}
+
+func (token *Token) convertTimestamps() error {
+	for _, f := range timestampFields {
+		rawTS, ok := token.Payload[f]
+		if ok {
+			// json.Unmarshal decodes numbers to float64 if the target type is map[string]interface{}.
+			floatTS, ok := rawTS.(float64)
+			if ok {
+				if math.Floor(floatTS) != floatTS {
+					// The timestamp contains decimals which means it's invalid or decoded incorrectly
+					return ErrInvalidTimestamp
+				}
+				token.Payload[f] = int64(floatTS)
+			} else {
+				return ErrInvalidTimestamp
+			}
+		}
+	}
+	return nil
 }
 
 func optString(m map[string]interface{}, key string) string {

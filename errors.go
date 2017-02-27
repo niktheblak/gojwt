@@ -26,6 +26,7 @@ var (
 	ErrInvalidHeader      = errors.New("Token has invalid header")
 	ErrInvalidType        = errors.New("Invalid token type")
 	ErrInvalidAlgorithm   = errors.New("Invalid or unsupported signing algorithm")
+	ErrInvalidTimestamp   = errors.New("Invalid timestamp")
 	ErrMalformedToken     = errors.New("Malformed token content")
 	ErrContextNotSet      = errors.New("Token context has not been set")
 )
