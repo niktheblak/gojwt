@@ -20,17 +20,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/niktheblak/gojwt/sign"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var (
 	testSecret  = []byte("secret")
-	testSigner  = sign.HS256(testSecret)
-	testContext = ContextWithSigner(testSigner)
+	testContext = DefaultContext(testSecret)
 	testHeader  = map[string]interface{}{
-		"alg": testSigner.Algorithm(),
+		"alg": testContext.Signer().Algorithm(),
 		"typ": testContext.Type(),
 	}
 	testClaims = map[string]interface{}{
