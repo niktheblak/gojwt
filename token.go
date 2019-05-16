@@ -18,8 +18,8 @@ package jwt
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
+	"log"
 	"math"
 	"strings"
 	"time"
@@ -27,8 +27,6 @@ import (
 	"github.com/niktheblak/gojwt/pkg/base64json"
 	"github.com/niktheblak/gojwt/pkg/tokencontext"
 )
-
-var Encoding = base64.RawURLEncoding
 
 var timestampFields = []string{"exp", "nbf", "iat"}
 
@@ -44,15 +42,6 @@ func NewToken(ctx tokencontext.Context) *Token {
 		Header:  ctx.CreateHeader(),
 		Payload: make(map[string]interface{}),
 	}
-}
-
-func Decode(ctx tokencontext.Context, str string) (*Token, error) {
-	t := NewToken(ctx)
-	err := t.Decode(str)
-	if err != nil {
-		return nil, err
-	}
-	return t, nil
 }
 
 func (token *Token) Algorithm() string {
@@ -205,7 +194,7 @@ func (token *Token) VerifySignature(tokenStr string) error {
 	}
 	encodedPayload := tokenStr[:signaturePos]
 	encodedSignature := tokenStr[signaturePos+1:]
-	signature, err := Encoding.DecodeString(encodedSignature)
+	signature, err := base64json.Encoding.DecodeString(encodedSignature)
 	if err != nil {
 		return err
 	}
@@ -229,7 +218,7 @@ func (token *Token) Decode(tokenStr string) error {
 	encodedPayload := tokenStr[claimsPos+1 : signaturePos]
 	encodedSignature := tokenStr[signaturePos+1:]
 	// Verify signature
-	signature, err := Encoding.DecodeString(encodedSignature)
+	signature, err := base64json.Encoding.DecodeString(encodedSignature)
 	if err != nil {
 		return err
 	}
@@ -260,31 +249,32 @@ func (token *Token) String() string {
 	buf := new(bytes.Buffer)
 	enc := json.NewEncoder(buf)
 	enc.SetIndent("", "    ")
-	enc.Encode(token)
+	if err := enc.Encode(token); err != nil {
+		// This should never happen
+		log.Fatal(err)
+	}
 	return buf.String()
 }
 
-func (token *Token) encode() (tokenString string, err error) {
+func (token *Token) encode() (tokenStr string, err error) {
 	buf := new(bytes.Buffer)
 	if err = base64json.Encode(token.Header, buf); err != nil {
 		return
 	}
-	err = buf.WriteByte('.')
-	if err != nil {
+	if err = buf.WriteByte('.'); err != nil {
 		return
 	}
 	if err = base64json.Encode(token.Payload, buf); err != nil {
 		return
 	}
 	signature := token.Context.Signer().Sign(buf.String())
-	err = buf.WriteByte('.')
-	if err != nil {
+	if err = buf.WriteByte('.'); err != nil {
 		return
 	}
-	if err = base64json.EncodeBase64(signature, buf); err != nil {
+	if _, err = base64json.EncodeBase64(signature, buf); err != nil {
 		return
 	}
-	tokenString = buf.String()
+	tokenStr = buf.String()
 	return
 }
 
@@ -308,6 +298,12 @@ func (token *Token) convertTimestamps() error {
 	return nil
 }
 
+func Decode(ctx tokencontext.Context, str string) (t *Token, err error) {
+	t = NewToken(ctx)
+	err = t.Decode(str)
+	return
+}
+
 func optString(m map[string]interface{}, key string) string {
 	rawValue, ok := m[key]
 	if !ok {
@@ -320,14 +316,16 @@ func optString(m map[string]interface{}, key string) string {
 	return value
 }
 
-func optTimestamp(m map[string]interface{}, key string) (time.Time, bool) {
+func optTimestamp(m map[string]interface{}, key string) (t time.Time, ok bool) {
 	rawTS, ok := m[key]
 	if !ok {
-		return time.Time{}, false
+		return
 	}
 	ts, ok := rawTS.(int64)
 	if !ok {
-		return time.Time{}, false
+		return
 	}
-	return time.Unix(ts, 0), true
+	t = time.Unix(ts, 0)
+	ok = true
+	return
 }

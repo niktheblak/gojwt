@@ -18,7 +18,7 @@ package sign
 
 import "errors"
 
-var ErrInvalidSignature = errors.New("Invalid signature")
+var ErrInvalidSignature = errors.New("invalid signature")
 
 type Signer interface {
 	Algorithm() string

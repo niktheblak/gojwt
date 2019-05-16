@@ -35,21 +35,23 @@ func Decode(data string, v interface{}) error {
 	return jsonDec.Decode(v)
 }
 
-func Encode(v interface{}, w io.Writer) error {
+func Encode(v interface{}, w io.Writer) (err error) {
 	base64Enc := base64.NewEncoder(Encoding, w)
 	jsonEnc := json.NewEncoder(base64Enc)
-	err := jsonEnc.Encode(v)
+	err = jsonEnc.Encode(v)
 	if err != nil {
-		return err
+		return
 	}
-	return base64Enc.Close()
+	err = base64Enc.Close()
+	return
 }
 
-func EncodeBase64(data []byte, w io.Writer) error {
+func EncodeBase64(data []byte, w io.Writer) (n int, err error) {
 	base64Enc := base64.NewEncoder(Encoding, w)
-	_, err := base64Enc.Write(data)
+	n, err = base64Enc.Write(data)
 	if err != nil {
-		return err
+		return
 	}
-	return base64Enc.Close()
+	err = base64Enc.Close()
+	return
 }
