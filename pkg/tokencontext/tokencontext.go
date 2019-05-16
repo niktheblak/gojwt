@@ -12,17 +12,18 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
- */
+*/
 
-package jwt
+package tokencontext
 
-import "github.com/niktheblak/gojwt/sign"
+import (
+	"github.com/niktheblak/gojwt/pkg/sign"
+)
 
 type Context interface {
 	Type() string
 	Signer() sign.Signer
-	NewToken() *Token
-	Decode(tokenString string) (*Token, error)
+	CreateHeader() map[string]interface{}
 }
 
 type context struct {
@@ -52,24 +53,7 @@ func (c *context) Signer() sign.Signer {
 	return c.signer
 }
 
-func (c *context) NewToken() *Token {
-	return &Token{
-		Context: c,
-		Header:  c.createHeader(),
-		Payload: make(map[string]interface{}),
-	}
-}
-
-func (c *context) Decode(tokenString string) (*Token, error) {
-	t := c.NewToken()
-	err := t.Decode(tokenString)
-	if err != nil {
-		return nil, err
-	}
-	return t, nil
-}
-
-func (c *context) createHeader() map[string]interface{} {
+func (c *context) CreateHeader() map[string]interface{} {
 	header := make(map[string]interface{})
 	header["typ"] = c.tokenType
 	header["alg"] = c.signer.Algorithm()

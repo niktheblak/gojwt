@@ -20,13 +20,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/niktheblak/gojwt/pkg/tokencontext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var (
 	testSecret  = []byte("secret")
-	testContext = DefaultContext(testSecret)
+	testContext = tokencontext.DefaultContext(testSecret)
 	testHeader  = map[string]interface{}{
 		"alg": testContext.Signer().Algorithm(),
 		"typ": testContext.Type(),
@@ -41,12 +42,12 @@ var (
 )
 
 func TestCustomTokenHeader(t *testing.T) {
-	token := testContext.NewToken()
+	token := NewToken(testContext)
 	token.Header["vendor"] = "ntb"
 	token.Payload = testClaims
 	tokenStr, err := token.Encode()
 	require.NoError(t, err)
-	decoded, err := testContext.Decode(tokenStr)
+	decoded, err := Decode(testContext, tokenStr)
 	require.NoError(t, err)
 	assert.Equal(t, "ntb", decoded.Header["vendor"])
 }
@@ -65,7 +66,7 @@ func TestUnsupportedAlgorithm(t *testing.T) {
 	}
 	tokenStr, err := token.encode()
 	require.NoError(t, err)
-	_, err = testContext.Decode(tokenStr)
+	_, err = Decode(testContext, tokenStr)
 	assert.EqualError(t, err, ErrInvalidAlgorithm.Error())
 }
 
@@ -84,7 +85,7 @@ func BenchmarkEncode(b *testing.B) {
 }
 
 func BenchmarkDecode(b *testing.B) {
-	token := testContext.NewToken()
+	token := NewToken(testContext)
 	token.Header = testHeader
 	token.Payload = testClaims
 	encoded, err := token.Encode()
@@ -92,7 +93,7 @@ func BenchmarkDecode(b *testing.B) {
 		b.FailNow()
 	}
 	for i := 0; i < b.N; i++ {
-		_, err := testContext.Decode(encoded)
+		_, err := Decode(testContext, encoded)
 		if err != nil {
 			b.Fail()
 		}
@@ -100,18 +101,18 @@ func BenchmarkDecode(b *testing.B) {
 }
 
 func TestRoundTrip(t *testing.T) {
-	token := testContext.NewToken()
+	token := NewToken(testContext)
 	token.Payload = testClaims
 	encoded, err := token.Encode()
 	require.NoError(t, err)
-	decoded, err := testContext.Decode(encoded)
+	decoded, err := Decode(testContext, encoded)
 	require.NoError(t, err)
 	assert.Equal(t, token.Header, decoded.Header)
 	assert.Equal(t, token.Payload, decoded.Payload)
 }
 
 func TestSignature(t *testing.T) {
-	token := testContext.NewToken()
+	token := NewToken(testContext)
 	token.Header = testHeader
 	token.Payload = testClaims
 	encoded, err := token.Encode()
@@ -121,20 +122,20 @@ func TestSignature(t *testing.T) {
 }
 
 func TestExpiration(t *testing.T) {
-	token := testContext.NewToken()
+	token := NewToken(testContext)
 	token.SetExpiration(time.Now().Add(-time.Hour))
 	encoded, err := token.encode()
 	require.NoError(t, err)
-	_, err = testContext.Decode(encoded)
+	_, err = Decode(testContext, encoded)
 	assert.EqualError(t, err, ErrInvalidToken.Error())
 }
 
 func TestNotBefore(t *testing.T) {
-	token := testContext.NewToken()
+	token := NewToken(testContext)
 	token.SetNotBefore(time.Now().Add(time.Hour))
 	encoded, err := token.encode()
 	require.NoError(t, err)
-	_, err = testContext.Decode(encoded)
+	_, err = Decode(testContext, encoded)
 	assert.EqualError(t, err, ErrInvalidToken.Error())
 }
 

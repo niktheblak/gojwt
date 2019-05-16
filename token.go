@@ -12,7 +12,7 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
- */
+*/
 
 package jwt
 
@@ -23,6 +23,9 @@ import (
 	"math"
 	"strings"
 	"time"
+
+	"github.com/niktheblak/gojwt/pkg/base64json"
+	"github.com/niktheblak/gojwt/pkg/tokencontext"
 )
 
 var Encoding = base64.RawURLEncoding
@@ -30,9 +33,26 @@ var Encoding = base64.RawURLEncoding
 var timestampFields = []string{"exp", "nbf", "iat"}
 
 type Token struct {
-	Context Context                `json:"-"`
+	Context tokencontext.Context   `json:"-"`
 	Header  map[string]interface{} `json:"header,omitempty"`
 	Payload map[string]interface{} `json:"payload,omitempty"`
+}
+
+func NewToken(ctx tokencontext.Context) *Token {
+	return &Token{
+		Context: ctx,
+		Header:  ctx.CreateHeader(),
+		Payload: make(map[string]interface{}),
+	}
+}
+
+func Decode(ctx tokencontext.Context, str string) (*Token, error) {
+	t := NewToken(ctx)
+	err := t.Decode(str)
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
 func (token *Token) Algorithm() string {
@@ -220,14 +240,14 @@ func (token *Token) Decode(tokenStr string) error {
 	if token.Header == nil {
 		token.Header = make(map[string]interface{})
 	}
-	if err := decodeBase64JSON(encodedHeader, &token.Header); err != nil {
+	if err := base64json.Decode(encodedHeader, &token.Header); err != nil {
 		return err
 	}
 	// Decode payload
 	if token.Payload == nil {
 		token.Payload = make(map[string]interface{})
 	}
-	if err := decodeBase64JSON(encodedPayload, &token.Payload); err != nil {
+	if err := base64json.Decode(encodedPayload, &token.Payload); err != nil {
 		return err
 	}
 	if err := token.convertTimestamps(); err != nil {
@@ -246,14 +266,14 @@ func (token *Token) String() string {
 
 func (token *Token) encode() (tokenString string, err error) {
 	buf := new(bytes.Buffer)
-	if err = encodeBase64JSON(token.Header, buf); err != nil {
+	if err = base64json.Encode(token.Header, buf); err != nil {
 		return
 	}
 	err = buf.WriteByte('.')
 	if err != nil {
 		return
 	}
-	if err = encodeBase64JSON(token.Payload, buf); err != nil {
+	if err = base64json.Encode(token.Payload, buf); err != nil {
 		return
 	}
 	signature := token.Context.Signer().Sign(buf.String())
@@ -261,7 +281,7 @@ func (token *Token) encode() (tokenString string, err error) {
 	if err != nil {
 		return
 	}
-	if err = encodeBase64(signature, buf); err != nil {
+	if err = base64json.EncodeBase64(signature, buf); err != nil {
 		return
 	}
 	tokenString = buf.String()

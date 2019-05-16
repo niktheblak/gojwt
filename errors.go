@@ -22,11 +22,11 @@ import (
 
 // Errors related to JSON web tokens
 var (
-	ErrInvalidToken       = errors.New("Token is not valid")
-	ErrInvalidHeader      = errors.New("Token has invalid header")
-	ErrInvalidType        = errors.New("Invalid token type")
-	ErrInvalidAlgorithm   = errors.New("Invalid or unsupported signing algorithm")
-	ErrInvalidTimestamp   = errors.New("Invalid timestamp")
-	ErrMalformedToken     = errors.New("Malformed token content")
-	ErrContextNotSet      = errors.New("Token context has not been set")
+	ErrInvalidToken       = errors.New("token is not valid")
+	ErrInvalidHeader      = errors.New("token has invalid header")
+	ErrInvalidType        = errors.New("invalid token type")
+	ErrInvalidAlgorithm   = errors.New("invalid or unsupported signing algorithm")
+	ErrInvalidTimestamp   = errors.New("invalid timestamp")
+	ErrMalformedToken     = errors.New("malformed token content")
+	ErrContextNotSet      = errors.New("token context has not been set")
 )

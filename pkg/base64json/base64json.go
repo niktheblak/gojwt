@@ -14,7 +14,7 @@
    limitations under the License.
  */
 
-package jwt
+package base64json
 
 import (
 	"bytes"
@@ -23,7 +23,9 @@ import (
 	"io"
 )
 
-func decodeBase64JSON(data string, v interface{}) error {
+var Encoding = base64.RawURLEncoding
+
+func Decode(data string, v interface{}) error {
 	if data == "" {
 		return nil
 	}
@@ -33,7 +35,7 @@ func decodeBase64JSON(data string, v interface{}) error {
 	return jsonDec.Decode(v)
 }
 
-func encodeBase64JSON(v interface{}, w io.Writer) error {
+func Encode(v interface{}, w io.Writer) error {
 	base64Enc := base64.NewEncoder(Encoding, w)
 	jsonEnc := json.NewEncoder(base64Enc)
 	err := jsonEnc.Encode(v)
@@ -43,7 +45,7 @@ func encodeBase64JSON(v interface{}, w io.Writer) error {
 	return base64Enc.Close()
 }
 
-func encodeBase64(data []byte, w io.Writer) error {
+func EncodeBase64(data []byte, w io.Writer) error {
 	base64Enc := base64.NewEncoder(Encoding, w)
 	_, err := base64Enc.Write(data)
 	if err != nil {
