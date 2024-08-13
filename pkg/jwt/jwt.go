@@ -1,25 +1,9 @@
-/*
-  Copyright 2017 Niko Korhonen
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
-
 package jwt
 
 import (
 	"bytes"
 	"encoding/json"
-	"log"
+	"errors"
 	"math"
 	"strings"
 	"time"
@@ -31,16 +15,16 @@ import (
 var timestampFields = []string{"exp", "nbf", "iat"}
 
 type Token struct {
-	Context tokencontext.Context   `json:"-"`
-	Header  map[string]interface{} `json:"header,omitempty"`
-	Payload map[string]interface{} `json:"payload,omitempty"`
+	Context tokencontext.Context `json:"-"`
+	Header  map[string]any       `json:"header,omitempty"`
+	Payload map[string]any       `json:"payload,omitempty"`
 }
 
 func NewToken(ctx tokencontext.Context) *Token {
 	return &Token{
 		Context: ctx,
 		Header:  ctx.CreateHeader(),
-		Payload: make(map[string]interface{}),
+		Payload: make(map[string]any),
 	}
 }
 
@@ -222,19 +206,20 @@ func (token *Token) Decode(tokenStr string) error {
 	if err != nil {
 		return err
 	}
+	var tokenErrs []error
 	if err := token.Context.Signer().Verify(encodedContent, signature); err != nil {
-		return err
+		tokenErrs = append(tokenErrs, err)
 	}
 	// Decode header
 	if token.Header == nil {
-		token.Header = make(map[string]interface{})
+		token.Header = make(map[string]any)
 	}
 	if err := base64json.Decode(encodedHeader, &token.Header); err != nil {
 		return err
 	}
 	// Decode payload
 	if token.Payload == nil {
-		token.Payload = make(map[string]interface{})
+		token.Payload = make(map[string]any)
 	}
 	if err := base64json.Decode(encodedPayload, &token.Payload); err != nil {
 		return err
@@ -242,7 +227,10 @@ func (token *Token) Decode(tokenStr string) error {
 	if err := token.convertTimestamps(); err != nil {
 		return err
 	}
-	return token.Validate()
+	if err := token.Validate(); err != nil {
+		tokenErrs = append(tokenErrs, err)
+	}
+	return errors.Join(tokenErrs...)
 }
 
 func (token *Token) String() string {
@@ -250,8 +238,7 @@ func (token *Token) String() string {
 	enc := json.NewEncoder(buf)
 	enc.SetIndent("", "    ")
 	if err := enc.Encode(token); err != nil {
-		// This should never happen
-		log.Fatal(err)
+		panic(err)
 	}
 	return buf.String()
 }
@@ -282,7 +269,7 @@ func (token *Token) convertTimestamps() error {
 	for _, f := range timestampFields {
 		rawTS, ok := token.Payload[f]
 		if ok {
-			// json.Unmarshal decodes numbers to float64 if the target type is map[string]interface{}.
+			// json.Unmarshal decodes numbers to float64 if the target type is map[string]any.
 			floatTS, ok := rawTS.(float64)
 			if ok {
 				if math.Floor(floatTS) != floatTS {
@@ -304,7 +291,7 @@ func Decode(ctx tokencontext.Context, str string) (t *Token, err error) {
 	return
 }
 
-func optString(m map[string]interface{}, key string) string {
+func optString(m map[string]any, key string) string {
 	rawValue, ok := m[key]
 	if !ok {
 		return ""
@@ -316,7 +303,7 @@ func optString(m map[string]interface{}, key string) string {
 	return value
 }
 
-func optTimestamp(m map[string]interface{}, key string) (t time.Time, ok bool) {
+func optTimestamp(m map[string]any, key string) (t time.Time, ok bool) {
 	rawTS, ok := m[key]
 	if !ok {
 		return
