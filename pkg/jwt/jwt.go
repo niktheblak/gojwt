@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"strings"
 	"time"
 
 	"github.com/niktheblak/gojwt/pkg/base64json"
+	"github.com/niktheblak/gojwt/pkg/sign"
 	"github.com/niktheblak/gojwt/pkg/tokencontext"
 )
 
@@ -132,17 +134,22 @@ func (token *Token) Validate() error {
 	}
 	alg, ok := token.Header["alg"]
 	if !ok {
-		// Token must have the algorithm header set
-		return ErrInvalidHeader
+		return fmt.Errorf("%w: missing alg field", ErrInvalidHeader)
 	}
-	if alg != token.Context.Signer().Algorithm() {
-		// Token signing algorithm must match the one used in token context
+	algStr, ok := alg.(string)
+	if !ok {
+		return fmt.Errorf("%w: alg field is not a string", ErrInvalidHeader)
+	}
+	algorithm, err := sign.ParseAlgorithm(algStr)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidHeader, err)
+	}
+	if algorithm != token.Context.Signer().Algorithm() {
 		return ErrInvalidAlgorithm
 	}
 	typ, ok := token.Header["typ"]
 	if !ok {
-		// Token must have the type header set
-		return ErrInvalidHeader
+		return fmt.Errorf("%w: missing typ field", ErrInvalidHeader)
 	}
 	if typ != token.Context.Type() {
 		// Token type must match the one used in token context
@@ -166,23 +173,6 @@ func (token *Token) Encode() (string, error) {
 		return "", err
 	}
 	return token.encode()
-}
-
-func (token *Token) VerifySignature(tokenStr string) error {
-	if token.Context == nil {
-		return ErrContextNotSet
-	}
-	signaturePos := strings.LastIndexByte(tokenStr, '.')
-	if signaturePos == -1 {
-		return ErrMalformedToken
-	}
-	encodedPayload := tokenStr[:signaturePos]
-	encodedSignature := tokenStr[signaturePos+1:]
-	signature, err := base64json.Encoding.DecodeString(encodedSignature)
-	if err != nil {
-		return err
-	}
-	return token.Context.Signer().Verify(encodedPayload, signature)
 }
 
 func (token *Token) Decode(tokenStr string) error {
@@ -254,7 +244,10 @@ func (token *Token) encode() (tokenStr string, err error) {
 	if err = base64json.Encode(token.Payload, buf); err != nil {
 		return
 	}
-	signature := token.Context.Signer().Sign(buf.String())
+	signature, err := token.Context.Signer().Sign(buf.String())
+	if err != nil {
+		return
+	}
 	if err = buf.WriteByte('.'); err != nil {
 		return
 	}

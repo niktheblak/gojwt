@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/niktheblak/gojwt/pkg/jwt"
-	"github.com/niktheblak/gojwt/pkg/tokencontext"
+	"github.com/niktheblak/gojwt/pkg/sign"
 )
 
 var (
@@ -24,7 +24,6 @@ var encodeCmd = &cobra.Command{
 	Short:        "Encodes the given values into a JWT token",
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		tokenContext := tokencontext.DefaultContext(secretBytes)
 		headerMap := make(map[string]any)
 		if len(headerFile) > 0 {
 			data, err := os.ReadFile(headerFile)
@@ -53,7 +52,11 @@ var encodeCmd = &cobra.Command{
 				return err
 			}
 		}
-		token := jwt.NewToken(tokenContext)
+		alg, err := sign.ParseAlgorithm(algorithm)
+		if err != nil {
+			return err
+		}
+		token := jwt.NewToken(contexts[alg])
 		token.Header = headerMap
 		token.Payload = payloadMap
 		ts := time.Now()

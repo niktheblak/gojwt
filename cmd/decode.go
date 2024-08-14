@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/niktheblak/gojwt/pkg/jwt"
-	"github.com/niktheblak/gojwt/pkg/tokencontext"
+	"github.com/niktheblak/gojwt/pkg/sign"
 )
 
 var (
@@ -22,7 +22,6 @@ var decodeCmd = &cobra.Command{
 	Short:        "Decodes and prints the contents of the given JWT token",
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		tokenContext := tokencontext.DefaultContext(secretBytes)
 		var tokenStr string
 		if input != "" {
 			content, err := os.ReadFile(input)
@@ -38,7 +37,11 @@ var decodeCmd = &cobra.Command{
 			}
 			tokenStr = strings.TrimSpace(scanner.Text())
 		}
-		token, err := jwt.Decode(tokenContext, tokenStr)
+		alg, err := sign.ParseAlgorithm(algorithm)
+		if err != nil {
+			return err
+		}
+		token, err := jwt.Decode(contexts[alg], tokenStr)
 		if err != nil {
 			if force {
 				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: token is not valid: %v\n", err)

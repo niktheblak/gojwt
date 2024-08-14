@@ -12,7 +12,7 @@ import (
 
 var (
 	testSecret  = []byte("secret")
-	testContext = tokencontext.DefaultContext(testSecret)
+	testContext = tokencontext.Default(testSecret)
 	testHeader  = map[string]interface{}{
 		"alg": testContext.Signer().Algorithm(),
 		"typ": testContext.Type(),

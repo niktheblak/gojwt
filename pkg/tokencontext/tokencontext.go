@@ -2,6 +2,7 @@ package tokencontext
 
 import (
 	"github.com/niktheblak/gojwt/pkg/sign"
+	"github.com/niktheblak/gojwt/pkg/sign/sha"
 )
 
 type Context interface {
@@ -15,17 +16,17 @@ type context struct {
 	signer    sign.Signer
 }
 
-func DefaultContext(secret []byte) Context {
+func Default(secret []byte) Context {
 	return &context{
 		tokenType: "JWT",
-		signer:    sign.HS256(secret),
+		signer:    sha.HS256(secret),
 	}
 }
 
-func ContextWithSigner(s sign.Signer) Context {
+func ContextWithSigner(signer sign.Signer) Context {
 	return &context{
 		tokenType: "JWT",
-		signer:    s,
+		signer:    signer,
 	}
 }
 
