@@ -1,102 +1,50 @@
 package signing
 
 import (
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
-	"errors"
 	"fmt"
 	"os"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func LoadSigningKey(algorithm, path string) (any, error) {
+	keyData, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
 	switch GetFamily(algorithm) {
 	case HMAC:
-		return os.ReadFile(path)
+		return keyData, nil
 	case RSA:
-		return LoadRSAPrivateKey(path)
+		return jwt.ParseRSAPrivateKeyFromPEM(keyData)
 	case ECDSA:
-		return nil, fmt.Errorf("not implemented")
+		return jwt.ParseECPrivateKeyFromPEM(keyData)
 	case EdDSA:
-		return nil, fmt.Errorf("not implemented")
+		return jwt.ParseEdPrivateKeyFromPEM(keyData)
 	case RSAPSS:
-		return nil, fmt.Errorf("not implemented")
+		return keyData, nil
 	default:
 		return nil, fmt.Errorf("unknown signing algorithm: %s", algorithm)
 	}
 }
 
 func LoadVerifyKey(algorithm, path string) (any, error) {
+	keyData, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
 	switch GetFamily(algorithm) {
 	case HMAC:
-		return os.ReadFile(path)
+		return keyData, nil
 	case RSA:
-		return LoadRSAPublicKey(path)
+		return jwt.ParseRSAPublicKeyFromPEM(keyData)
 	case ECDSA:
-		return nil, fmt.Errorf("not implemented")
+		return jwt.ParseECPublicKeyFromPEM(keyData)
 	case EdDSA:
-		return nil, fmt.Errorf("not implemented")
+		return jwt.ParseEdPublicKeyFromPEM(keyData)
 	case RSAPSS:
-		return nil, fmt.Errorf("not implemented")
+		return keyData, nil
 	default:
 		return nil, fmt.Errorf("unknown signing algorithm: %s", algorithm)
-	}
-}
-
-func LoadRSAPublicKey(path string) (*rsa.PublicKey, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	return ParseRSAPublicKey(data)
-}
-
-func ParseRSAPublicKey(pemBytes []byte) (*rsa.PublicKey, error) {
-	block, _ := pem.Decode(pemBytes)
-	if block == nil {
-		return nil, errors.New("no key found")
-	}
-	switch block.Type {
-	case "PUBLIC KEY":
-		key, err := x509.ParsePKIXPublicKey(block.Bytes)
-		if err != nil {
-			return nil, err
-		}
-		rsaKey, ok := key.(*rsa.PublicKey)
-		if ok {
-			return rsaKey, nil
-		}
-		return nil, fmt.Errorf("unsupported key type %T", key)
-	default:
-		return nil, fmt.Errorf("unsupported block type %q", block.Type)
-	}
-}
-
-func LoadRSAPrivateKey(path string) (*rsa.PrivateKey, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	return ParseRSAPrivateKey(data)
-}
-
-func ParseRSAPrivateKey(pemBytes []byte) (*rsa.PrivateKey, error) {
-	block, _ := pem.Decode(pemBytes)
-	if block == nil {
-		return nil, errors.New("no key found")
-	}
-	switch block.Type {
-	case "PRIVATE KEY":
-		key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-		if err != nil {
-			return nil, err
-		}
-		rsaKey, ok := key.(*rsa.PrivateKey)
-		if !ok {
-			return nil, fmt.Errorf("unsupported key type %T", key)
-		}
-		return rsaKey, nil
-	default:
-		return nil, fmt.Errorf("unsupported block type %q", block.Type)
 	}
 }
