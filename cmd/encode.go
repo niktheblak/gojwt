@@ -26,6 +26,9 @@ var encodeCmd = &cobra.Command{
 	Short:        "Encodes the given values into a JWT token",
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := signing.ValidateAlgorithm(algorithm); err != nil {
+			return err
+		}
 		headerMap := make(map[string]any)
 		if len(headerFile) > 0 {
 			data, err := os.ReadFile(headerFile)

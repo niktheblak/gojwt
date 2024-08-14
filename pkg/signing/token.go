@@ -9,7 +9,6 @@ import (
 
 var (
 	ErrInvalidAlgorithm = errors.New("invalid signing algorithm")
-	ErrUnknownAlgorithm = errors.New("unknown signing algorithm")
 )
 
 func ValidateMethod(algorithm string, token *jwt.Token) error {

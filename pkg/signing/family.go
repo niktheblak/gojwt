@@ -1,6 +1,9 @@
 package signing
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -14,6 +17,24 @@ const (
 	EdDSA
 	RSAPSS
 )
+
+var (
+	ErrUnknownAlgorithm = errors.New("unknown signature algorithm")
+)
+
+var SupportedAlgorithms = []string{
+	jwt.SigningMethodHS256.Name,
+	jwt.SigningMethodRS256.Name,
+	jwt.SigningMethodRS384.Name,
+	jwt.SigningMethodRS512.Name,
+	jwt.SigningMethodES256.Name,
+	jwt.SigningMethodES384.Name,
+	jwt.SigningMethodES512.Name,
+	jwt.SigningMethodEdDSA.Alg(),
+	jwt.SigningMethodPS256.Name,
+	jwt.SigningMethodPS384.Name,
+	jwt.SigningMethodPS512.Name,
+}
 
 func GetFamilyFromSigningMethod(method jwt.SigningMethod) Family {
 	return GetFamily(method.Alg())
@@ -36,33 +57,43 @@ func GetFamily(algorithm string) Family {
 	}
 }
 
-func GetMethod(algorithm string) jwt.SigningMethod {
+func GetMethod(algorithm string) (method jwt.SigningMethod) {
 	switch algorithm {
 	case jwt.SigningMethodHS256.Name:
-		return jwt.SigningMethodHS256
+		method = jwt.SigningMethodHS256
 	case jwt.SigningMethodHS512.Name:
-		return jwt.SigningMethodHS512
+		method = jwt.SigningMethodHS512
 	case jwt.SigningMethodRS256.Name:
-		return jwt.SigningMethodRS256
+		method = jwt.SigningMethodRS256
 	case jwt.SigningMethodRS384.Name:
-		return jwt.SigningMethodRS384
+		method = jwt.SigningMethodRS384
 	case jwt.SigningMethodRS512.Name:
-		return jwt.SigningMethodRS512
+		method = jwt.SigningMethodRS512
 	case jwt.SigningMethodES256.Name:
-		return jwt.SigningMethodES256
+		method = jwt.SigningMethodES256
 	case jwt.SigningMethodES384.Name:
-		return jwt.SigningMethodES384
+		method = jwt.SigningMethodES384
 	case jwt.SigningMethodES512.Name:
-		return jwt.SigningMethodES512
+		method = jwt.SigningMethodES512
 	case jwt.SigningMethodEdDSA.Alg():
-		return jwt.SigningMethodEdDSA
+		method = jwt.SigningMethodEdDSA
 	case jwt.SigningMethodPS256.Name:
-		return jwt.SigningMethodPS256
+		method = jwt.SigningMethodPS256
 	case jwt.SigningMethodPS384.Name:
-		return jwt.SigningMethodPS384
+		method = jwt.SigningMethodPS384
 	case jwt.SigningMethodPS512.Name:
-		return jwt.SigningMethodPS512
+		method = jwt.SigningMethodPS512
 	default:
-		return nil
+		method = nil
 	}
+	return
+}
+
+func ValidateAlgorithm(algorithm string) error {
+	for _, a := range SupportedAlgorithms {
+		if a == algorithm {
+			return nil
+		}
+	}
+	return fmt.Errorf("%w: %s", ErrUnknownAlgorithm, algorithm)
 }

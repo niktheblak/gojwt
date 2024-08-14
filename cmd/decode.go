@@ -27,6 +27,9 @@ var decodeCmd = &cobra.Command{
 		if publicKeyPath == "" {
 			return fmt.Errorf("argument --public-key must be specified")
 		}
+		if err := signing.ValidateAlgorithm(algorithm); err != nil {
+			return err
+		}
 		var tokenStr string
 		if input != "" {
 			content, err := os.ReadFile(input)
@@ -53,13 +56,11 @@ var decodeCmd = &cobra.Command{
 		if err != nil {
 			if force {
 				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: token is not valid: %v\n", err)
-				printToken(cmd.OutOrStdout(), &invalidToken)
-				return nil
+				return printToken(cmd.OutOrStdout(), &invalidToken)
 			}
 			return err
 		}
-		printToken(cmd.OutOrStdout(), token)
-		return nil
+		return printToken(cmd.OutOrStdout(), token)
 	},
 }
 
@@ -70,13 +71,14 @@ func init() {
 	rootCmd.AddCommand(decodeCmd)
 }
 
-func printToken(w io.Writer, token *jwt.Token) {
+func printToken(w io.Writer, token *jwt.Token) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(token.Header); err != nil {
-		panic(err)
+		return err
 	}
 	if err := enc.Encode(token.Claims); err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
