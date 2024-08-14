@@ -38,13 +38,10 @@ var encodeCmd = &cobra.Command{
 			if err := json.Unmarshal(data, &headerMap); err != nil {
 				return err
 			}
-		} else {
+		} else if len(header) > 0 {
 			if err := json.Unmarshal([]byte(header), &headerMap); err != nil {
 				return err
 			}
-		}
-		if len(headerMap) == 0 {
-			return fmt.Errorf("header cannot be empty")
 		}
 		payloadMap := make(map[string]any)
 		if len(payloadFile) > 0 {
@@ -55,7 +52,7 @@ var encodeCmd = &cobra.Command{
 			if err := json.Unmarshal(data, &payloadMap); err != nil {
 				return err
 			}
-		} else {
+		} else if len(payload) > 0 {
 			if err := json.Unmarshal([]byte(payload), &payloadMap); err != nil {
 				return err
 			}
