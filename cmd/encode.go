@@ -61,9 +61,7 @@ var encodeCmd = &cobra.Command{
 		token := jwt.New(signingMethod)
 		headerMap["alg"] = signingMethod.Alg()
 		token.Header = headerMap
-		ts := time.Now().UTC()
-		payloadMap["iat"] = ts.Unix()
-		payloadMap["exp"] = ts.Add(validity).Unix()
+		ensureValidity(payloadMap)
 		token.Claims = jwt.MapClaims(payloadMap)
 		if privateKeyPath == "" {
 			return fmt.Errorf("argument --private-key must be specified")
@@ -95,4 +93,33 @@ func init() {
 	encodeCmd.Flags().DurationVar(&validity, "validity", 1*time.Hour, "JWT validity period")
 
 	rootCmd.AddCommand(encodeCmd)
+}
+
+func ensureValidity(payload map[string]any) {
+	ts := time.Now().UTC()
+	if !validateTS(payload, "iat", func(ts time.Time) bool {
+		return ts.Before(time.Now().UTC())
+	}) {
+		payload["iat"] = ts.Unix()
+	}
+	if !validateTS(payload, "exp", func(ts time.Time) bool {
+		return ts.After(time.Now().UTC())
+	}) {
+		payload["exp"] = ts.Add(validity).Unix()
+	}
+}
+
+func validateTS(payload map[string]any, field string, validate func(time.Time) bool) bool {
+	rawTS, ok := payload[field]
+	if ok {
+		intTS, ok := rawTS.(int64)
+		if ok {
+			if intTS <= 0 {
+				return false
+			}
+			ts := time.Unix(intTS, 0).UTC()
+			return validate(ts)
+		}
+	}
+	return false
 }
