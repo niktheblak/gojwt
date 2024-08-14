@@ -2,13 +2,15 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/spf13/cobra"
 
-	"github.com/niktheblak/gojwt/pkg/jwt"
-	"github.com/niktheblak/gojwt/pkg/sign"
+	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/niktheblak/gojwt/pkg/signing"
 )
 
 var (
@@ -38,6 +40,9 @@ var encodeCmd = &cobra.Command{
 				return err
 			}
 		}
+		if len(headerMap) == 0 {
+			return fmt.Errorf("header cannot be empty")
+		}
 		payloadMap := make(map[string]any)
 		if len(payloadFile) > 0 {
 			data, err := os.ReadFile(payloadFile)
@@ -52,17 +57,22 @@ var encodeCmd = &cobra.Command{
 				return err
 			}
 		}
-		alg, err := sign.ParseAlgorithm(algorithm)
+		signingMethod := signing.GetMethod(algorithm)
+		token := jwt.New(signingMethod)
+		headerMap["alg"] = signingMethod.Alg()
+		token.Header = headerMap
+		ts := time.Now().UTC()
+		payloadMap["iat"] = ts.Unix()
+		payloadMap["exp"] = ts.Add(validity).Unix()
+		token.Claims = jwt.MapClaims(payloadMap)
+		if privateKeyPath == "" {
+			return fmt.Errorf("argument --private-key must be specified")
+		}
+		key, err := signing.LoadSigningKey(algorithm, privateKeyPath)
 		if err != nil {
 			return err
 		}
-		token := jwt.NewToken(contexts[alg])
-		token.Header = headerMap
-		token.Payload = payloadMap
-		ts := time.Now()
-		token.SetIssuedAt(ts)
-		token.SetExpiration(ts.Add(validity))
-		tokenStr, err := token.Encode()
+		tokenStr, err := token.SignedString(key)
 		if err != nil {
 			return err
 		}

@@ -2,14 +2,16 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/cobra"
 
-	"github.com/niktheblak/gojwt/pkg/jwt"
-	"github.com/niktheblak/gojwt/pkg/sign"
+	"github.com/niktheblak/gojwt/pkg/signing"
 )
 
 var (
@@ -22,6 +24,9 @@ var decodeCmd = &cobra.Command{
 	Short:        "Decodes and prints the contents of the given JWT token",
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if publicKeyPath == "" {
+			return fmt.Errorf("argument --public-key must be specified")
+		}
 		var tokenStr string
 		if input != "" {
 			content, err := os.ReadFile(input)
@@ -37,20 +42,23 @@ var decodeCmd = &cobra.Command{
 			}
 			tokenStr = strings.TrimSpace(scanner.Text())
 		}
-		alg, err := sign.ParseAlgorithm(algorithm)
-		if err != nil {
-			return err
-		}
-		token, err := jwt.Decode(contexts[alg], tokenStr)
+		var invalidToken jwt.Token
+		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+			invalidToken = *token
+			if err := signing.ValidateMethod(algorithm, token); err != nil {
+				return nil, err
+			}
+			return signing.LoadVerifyKey(algorithm, publicKeyPath)
+		})
 		if err != nil {
 			if force {
 				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: token is not valid: %v\n", err)
-				cmd.Println(token.String())
+				printToken(cmd.OutOrStdout(), &invalidToken)
 				return nil
 			}
 			return err
 		}
-		cmd.Println(token.String())
+		printToken(cmd.OutOrStdout(), token)
 		return nil
 	},
 }
@@ -60,4 +68,15 @@ func init() {
 	decodeCmd.Flags().BoolVarP(&force, "force", "f", false, "print token data even if token is not valid")
 
 	rootCmd.AddCommand(decodeCmd)
+}
+
+func printToken(w io.Writer, token *jwt.Token) {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(token.Header); err != nil {
+		panic(err)
+	}
+	if err := enc.Encode(token.Claims); err != nil {
+		panic(err)
+	}
 }
