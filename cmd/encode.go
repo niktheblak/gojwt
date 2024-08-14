@@ -96,30 +96,52 @@ func init() {
 }
 
 func ensureValidity(payload map[string]any) {
-	ts := time.Now().UTC()
-	if !validateTS(payload, "iat", func(ts time.Time) bool {
-		return ts.Before(time.Now().UTC())
-	}) {
-		payload["iat"] = ts.Unix()
+	now := time.Now().UTC()
+	iatValid := true
+	iat, ok := extractTS(payload, "iat")
+	if !ok {
+		iatValid = false
 	}
-	if !validateTS(payload, "exp", func(ts time.Time) bool {
-		return ts.After(time.Now().UTC())
-	}) {
-		payload["exp"] = ts.Add(validity).Unix()
+	if iat.After(now) {
+		iatValid = false
+	}
+	if !iatValid {
+		iat = now
+		payload["iat"] = iat.Unix()
+	}
+	expValid := true
+	exp, ok := extractTS(payload, "exp")
+	if !ok {
+		expValid = false
+	}
+	if exp.Before(now) {
+		expValid = false
+	}
+	if !expValid {
+		exp = now.Add(validity)
+		payload["exp"] = exp.Unix()
+	}
+	nbf, ok := extractTS(payload, "nbf")
+	if ok {
+		if nbf.Before(iat) || nbf.After(exp) {
+			delete(payload, "nbf")
+		}
 	}
 }
 
-func validateTS(payload map[string]any, field string, validate func(time.Time) bool) bool {
+func extractTS(payload map[string]any, field string) (time.Time, bool) {
 	rawTS, ok := payload[field]
-	if ok {
-		intTS, ok := rawTS.(int64)
-		if ok {
-			if intTS <= 0 {
-				return false
-			}
-			ts := time.Unix(intTS, 0).UTC()
-			return validate(ts)
-		}
+	if !ok {
+		return time.Time{}, false
 	}
-	return false
+	var intTS int64
+	switch t := rawTS.(type) {
+	case int64:
+		intTS = t
+	case float64:
+		intTS = int64(t)
+	default:
+		return time.Time{}, false
+	}
+	return time.Unix(intTS, 0), true
 }
