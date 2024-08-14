@@ -22,7 +22,7 @@ func LoadSigningKey(algorithm, path string) (any, error) {
 	case EdDSA:
 		return jwt.ParseEdPrivateKeyFromPEM(keyData)
 	case RSAPSS:
-		return keyData, nil
+		return jwt.ParseRSAPrivateKeyFromPEM(keyData)
 	default:
 		return nil, fmt.Errorf("unknown signing algorithm: %s", algorithm)
 	}
@@ -43,7 +43,7 @@ func LoadVerifyKey(algorithm, path string) (any, error) {
 	case EdDSA:
 		return jwt.ParseEdPublicKeyFromPEM(keyData)
 	case RSAPSS:
-		return keyData, nil
+		return jwt.ParseRSAPrivateKeyFromPEM(keyData)
 	default:
 		return nil, fmt.Errorf("unknown signing algorithm: %s", algorithm)
 	}
