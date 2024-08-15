@@ -12,7 +12,11 @@ func LoadSigningKey(algorithm, path string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	switch GetFamily(algorithm) {
+	family, err := GetFamily(algorithm)
+	if err != nil {
+		return nil, err
+	}
+	switch family {
 	case HMAC:
 		return keyData, nil
 	case RSA:
@@ -24,7 +28,7 @@ func LoadSigningKey(algorithm, path string) (any, error) {
 	case RSAPSS:
 		return jwt.ParseRSAPrivateKeyFromPEM(keyData)
 	default:
-		return nil, fmt.Errorf("unknown signing algorithm: %s", algorithm)
+		return nil, fmt.Errorf("%w: %s", ErrUnknownAlgorithm, algorithm)
 	}
 }
 
@@ -33,7 +37,11 @@ func LoadVerifyKey(algorithm, path string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	switch GetFamily(algorithm) {
+	family, err := GetFamily(algorithm)
+	if err != nil {
+		return nil, err
+	}
+	switch family {
 	case HMAC:
 		return keyData, nil
 	case RSA:
@@ -45,6 +53,6 @@ func LoadVerifyKey(algorithm, path string) (any, error) {
 	case RSAPSS:
 		return jwt.ParseRSAPrivateKeyFromPEM(keyData)
 	default:
-		return nil, fmt.Errorf("unknown signing algorithm: %s", algorithm)
+		return nil, fmt.Errorf("%w: %s", ErrUnknownAlgorithm, algorithm)
 	}
 }

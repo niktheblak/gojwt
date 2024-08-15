@@ -57,7 +57,10 @@ var encodeCmd = &cobra.Command{
 				return err
 			}
 		}
-		signingMethod := signing.GetMethod(algorithm)
+		signingMethod, ok := signing.Methods[algorithm]
+		if !ok {
+			return signing.ErrUnknownAlgorithm
+		}
 		token := jwt.New(signingMethod)
 		headerMap["alg"] = signingMethod.Alg()
 		token.Header = headerMap

@@ -3,6 +3,7 @@ package signing
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -10,8 +11,7 @@ import (
 type Family int
 
 const (
-	Unknown Family = iota
-	HMAC
+	HMAC Family = iota
 	RSA
 	ECDSA
 	EdDSA
@@ -19,81 +19,49 @@ const (
 )
 
 var (
-	ErrUnknownAlgorithm = errors.New("unknown signature algorithm")
+	ErrUnknownFamily    = errors.New("unknown family")
+	ErrUnknownAlgorithm = errors.New("unknown signing algorithm")
 )
 
-var SupportedAlgorithms = []string{
-	jwt.SigningMethodHS256.Name,
-	jwt.SigningMethodRS256.Name,
-	jwt.SigningMethodRS384.Name,
-	jwt.SigningMethodRS512.Name,
-	jwt.SigningMethodES256.Name,
-	jwt.SigningMethodES384.Name,
-	jwt.SigningMethodES512.Name,
-	jwt.SigningMethodEdDSA.Alg(),
-	jwt.SigningMethodPS256.Name,
-	jwt.SigningMethodPS384.Name,
-	jwt.SigningMethodPS512.Name,
+var Methods = map[string]jwt.SigningMethod{
+	jwt.SigningMethodHS256.Name:  jwt.SigningMethodHS256,
+	jwt.SigningMethodRS256.Name:  jwt.SigningMethodRS256,
+	jwt.SigningMethodRS384.Name:  jwt.SigningMethodRS384,
+	jwt.SigningMethodRS512.Name:  jwt.SigningMethodRS512,
+	jwt.SigningMethodES256.Name:  jwt.SigningMethodES256,
+	jwt.SigningMethodES384.Name:  jwt.SigningMethodES384,
+	jwt.SigningMethodES512.Name:  jwt.SigningMethodES512,
+	jwt.SigningMethodEdDSA.Alg(): jwt.SigningMethodEdDSA,
+	jwt.SigningMethodPS256.Name:  jwt.SigningMethodPS256,
+	jwt.SigningMethodPS384.Name:  jwt.SigningMethodPS384,
+	jwt.SigningMethodPS512.Name:  jwt.SigningMethodPS512,
 }
 
-func GetFamilyFromSigningMethod(method jwt.SigningMethod) Family {
+var Families = map[Family][]string{
+	HMAC:   {jwt.SigningMethodHS256.Name, jwt.SigningMethodHS512.Name},
+	RSA:    {jwt.SigningMethodRS256.Name, jwt.SigningMethodRS384.Name, jwt.SigningMethodRS512.Name},
+	ECDSA:  {jwt.SigningMethodES256.Name, jwt.SigningMethodES384.Name, jwt.SigningMethodES512.Name},
+	EdDSA:  {jwt.SigningMethodEdDSA.Alg()},
+	RSAPSS: {jwt.SigningMethodPS256.Name, jwt.SigningMethodPS384.Name, jwt.SigningMethodPS512.Name},
+}
+
+func GetFamily(algorithm string) (Family, error) {
+	for family, algorithms := range Families {
+		if slices.Contains(algorithms, algorithm) {
+			return family, nil
+		}
+	}
+	return 0, ErrUnknownFamily
+}
+
+func GetFamilyFromSigningMethod(method jwt.SigningMethod) (Family, error) {
 	return GetFamily(method.Alg())
 }
 
-func GetFamily(algorithm string) Family {
-	switch algorithm {
-	case jwt.SigningMethodHS256.Name, jwt.SigningMethodHS512.Name:
-		return HMAC
-	case jwt.SigningMethodRS256.Name, jwt.SigningMethodRS384.Name, jwt.SigningMethodRS512.Name:
-		return RSA
-	case jwt.SigningMethodES256.Name, jwt.SigningMethodES384.Name, jwt.SigningMethodES512.Name:
-		return ECDSA
-	case jwt.SigningMethodEdDSA.Alg():
-		return EdDSA
-	case jwt.SigningMethodPS256.Name, jwt.SigningMethodPS384.Name, jwt.SigningMethodPS512.Name:
-		return RSAPSS
-	default:
-		return Unknown
-	}
-}
-
-func GetMethod(algorithm string) (method jwt.SigningMethod) {
-	switch algorithm {
-	case jwt.SigningMethodHS256.Name:
-		method = jwt.SigningMethodHS256
-	case jwt.SigningMethodHS512.Name:
-		method = jwt.SigningMethodHS512
-	case jwt.SigningMethodRS256.Name:
-		method = jwt.SigningMethodRS256
-	case jwt.SigningMethodRS384.Name:
-		method = jwt.SigningMethodRS384
-	case jwt.SigningMethodRS512.Name:
-		method = jwt.SigningMethodRS512
-	case jwt.SigningMethodES256.Name:
-		method = jwt.SigningMethodES256
-	case jwt.SigningMethodES384.Name:
-		method = jwt.SigningMethodES384
-	case jwt.SigningMethodES512.Name:
-		method = jwt.SigningMethodES512
-	case jwt.SigningMethodEdDSA.Alg():
-		method = jwt.SigningMethodEdDSA
-	case jwt.SigningMethodPS256.Name:
-		method = jwt.SigningMethodPS256
-	case jwt.SigningMethodPS384.Name:
-		method = jwt.SigningMethodPS384
-	case jwt.SigningMethodPS512.Name:
-		method = jwt.SigningMethodPS512
-	default:
-		method = nil
-	}
-	return
-}
-
 func ValidateAlgorithm(algorithm string) error {
-	for _, a := range SupportedAlgorithms {
-		if a == algorithm {
-			return nil
-		}
+	_, ok := Methods[algorithm]
+	if !ok {
+		return fmt.Errorf("%w: %s", ErrUnknownAlgorithm, algorithm)
 	}
-	return fmt.Errorf("%w: %s", ErrUnknownAlgorithm, algorithm)
+	return nil
 }

@@ -12,25 +12,33 @@ var (
 )
 
 func ValidateMethod(algorithm string, token *jwt.Token) error {
-	switch GetFamilyFromSigningMethod(token.Method) {
+	family, err := GetFamilyFromSigningMethod(token.Method)
+	if err != nil {
+		return err
+	}
+	tokenFamily, err := GetFamily(algorithm)
+	if err != nil {
+		return err
+	}
+	switch family {
 	case HMAC:
-		if GetFamily(algorithm) != HMAC {
+		if tokenFamily != HMAC {
 			return ErrInvalidAlgorithm
 		}
 	case RSA:
-		if GetFamily(algorithm) != RSA {
+		if tokenFamily != RSA {
 			return ErrInvalidAlgorithm
 		}
 	case ECDSA:
-		if GetFamily(algorithm) != ECDSA {
+		if tokenFamily != ECDSA {
 			return ErrInvalidAlgorithm
 		}
 	case EdDSA:
-		if GetFamily(algorithm) != EdDSA {
+		if tokenFamily != EdDSA {
 			return ErrInvalidAlgorithm
 		}
 	case RSAPSS:
-		if GetFamily(algorithm) != RSAPSS {
+		if tokenFamily != RSAPSS {
 			return ErrInvalidAlgorithm
 		}
 	default:
