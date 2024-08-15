@@ -19,7 +19,7 @@ var (
 )
 
 var decodeCmd = &cobra.Command{
-	Use:          "decode",
+	Use:          "decode [TOKEN...]",
 	Short:        "Decodes and prints the contents of the given JWT token",
 	SilenceUsage: true,
 	Args:         cobra.MinimumNArgs(0),
@@ -69,13 +69,24 @@ func parseToken(cmd *cobra.Command, tokenStr string) error {
 		return signing.LoadVerifyKey(algorithm, publicKeyPath)
 	})
 	if err != nil {
-		if force {
-			fmt.Fprintf(cmd.ErrOrStderr(), "Warning: token is not valid: %v\n", err)
-			return printToken(cmd.OutOrStdout(), &invalidToken)
+		if !force {
+			return err
 		}
-		return err
+		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: token is not valid: %v\n", err)
+		token = &invalidToken
 	}
-	return printToken(cmd.OutOrStdout(), token)
+	var w io.Writer
+	if output != "" {
+		f, err := os.Create(output)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		w = f
+	} else {
+		w = cmd.OutOrStdout()
+	}
+	return printToken(w, token)
 }
 
 func printToken(w io.Writer, token *jwt.Token) error {
