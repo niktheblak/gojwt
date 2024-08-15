@@ -23,18 +23,15 @@ var (
 	ErrUnknownAlgorithm = errors.New("unknown signing algorithm")
 )
 
-var Methods = map[string]jwt.SigningMethod{
-	jwt.SigningMethodHS256.Name:  jwt.SigningMethodHS256,
-	jwt.SigningMethodRS256.Name:  jwt.SigningMethodRS256,
-	jwt.SigningMethodRS384.Name:  jwt.SigningMethodRS384,
-	jwt.SigningMethodRS512.Name:  jwt.SigningMethodRS512,
-	jwt.SigningMethodES256.Name:  jwt.SigningMethodES256,
-	jwt.SigningMethodES384.Name:  jwt.SigningMethodES384,
-	jwt.SigningMethodES512.Name:  jwt.SigningMethodES512,
-	jwt.SigningMethodEdDSA.Alg(): jwt.SigningMethodEdDSA,
-	jwt.SigningMethodPS256.Name:  jwt.SigningMethodPS256,
-	jwt.SigningMethodPS384.Name:  jwt.SigningMethodPS384,
-	jwt.SigningMethodPS512.Name:  jwt.SigningMethodPS512,
+var Methods map[string]jwt.SigningMethod
+
+func init() {
+	// go-jwt doesn't make the algorithm-signing method map public so reconstruct it here
+	Methods = make(map[string]jwt.SigningMethod)
+	for _, algorithm := range jwt.GetAlgorithms() {
+		Methods[algorithm] = jwt.GetSigningMethod(algorithm)
+	}
+	delete(Methods, "none")
 }
 
 var Families = map[Family][]string{
@@ -52,10 +49,6 @@ func GetFamily(algorithm string) (Family, error) {
 		}
 	}
 	return 0, ErrUnknownFamily
-}
-
-func GetFamilyFromSigningMethod(method jwt.SigningMethod) (Family, error) {
-	return GetFamily(method.Alg())
 }
 
 func ValidateAlgorithm(algorithm string) error {
